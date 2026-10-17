@@ -67,7 +67,7 @@ GuruLens is being developed independently with hands-on planning, design directi
 ## Roadmap
 
 - [x] Establish the  GuruLens concept and initial prototype.
-- [x] Complete core teacher discovery and educator profiles.
+- [ ] Complete core teacher discovery and educator profiles.
 - [ ] Validate student feedback and review moderation flows.
 - [ ] Complete educational content and community workflows.
 - [ ] Harden authentication, permissions, and administration.
