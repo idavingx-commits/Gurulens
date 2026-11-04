@@ -106,6 +106,10 @@ Key dirs: `src/app/(site)` public pages, `src/app/(auth)` login/register, `src/a
 
 ## 9. Changelog (newest first)
 
+### 2026-11-04 — Admin account on the live database
+- Migration `20261104200000_create_admin_account.sql` creates `admin@gurulens.lk` (role admin, active) with a bcrypt hash of the §5 admin password, or promotes/resets an existing account with that email. Only the hash is stored in the file.
+- Note: the repo is public and §5 lists the password in plain text — change it after first login.
+
 ### 2026-11-04 — Fixed production outage on Netlify (every page returned 500)
 - Cause: Prisma was configured for SQLite with `DATABASE_URL`, which doesn't exist on Netlify (`PrismaClientInitializationError: Environment variable not found: DATABASE_URL`). Local `storage/` uploads also can't persist on serverless.
 - Switched Prisma to Postgres on Netlify Database (`NETLIFY_DB_URL`), added `rhel-openssl-3.0.x` binary target, `prisma generate` in `build` + `postinstall`.
