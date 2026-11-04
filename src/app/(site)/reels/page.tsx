@@ -8,6 +8,7 @@ import { hydratePosts, POST_INCLUDE } from "@/lib/data";
 import { db } from "@/lib/db";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/reels" },
   title: "Reels",
   description: "Short lesson clips and quick tips from GuruLens teachers.",
 };

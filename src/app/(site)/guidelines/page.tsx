@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BulletList, StaticPage, StaticSection } from "@/components/legal/StaticPage";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/guidelines" },
   title: "Community Guidelines",
   description:
     "How we keep GuruLens a safe, honest, education-first community for students and teachers.",

@@ -2,7 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Noto_Sans_Sinhala, Plus_Jakarta_Sans } from "next/font/google";
 
 import { ToastProvider } from "@/components/ui/toast";
-import { APP_NAME, APP_TAGLINE } from "@/lib/constants";
+import { APP_NAME, APP_TAGLINE, COMPANY_NAME } from "@/lib/constants";
+import { SITE_URL } from "@/lib/site";
 
 import "./globals.css";
 
@@ -18,10 +19,8 @@ const sinhala = Noto_Sans_Sinhala({
   display: "swap",
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL(SITE_URL),
   title: {
     default: `${APP_NAME} — ${APP_TAGLINE}`,
     template: `%s · ${APP_NAME}`,
@@ -29,17 +28,28 @@ export const metadata: Metadata = {
   description:
     "GuruLens is Sri Lanka's education-first platform to discover trusted tuition teachers, follow their lessons and share verified learning experiences. සිංහල හා English.",
   applicationName: APP_NAME,
+  authors: [{ name: COMPANY_NAME }],
+  creator: COMPANY_NAME,
+  publisher: COMPANY_NAME,
   keywords: [
+    "GuruLens",
+    "Guru Lens",
+    "GuruLens Sri Lanka",
+    "gurulens.us",
+    "ගුරු ලෙන්ස්",
     "Sri Lanka teachers",
     "tuition classes",
     "teacher ratings",
-    "GuruLens",
+    "tuition teachers Sri Lanka",
     "ගුරුවරු",
     "උපකාරක පන්ති",
   ],
   openGraph: {
     type: "website",
     siteName: APP_NAME,
+    url: "/",
+    locale: "en_LK",
+    alternateLocale: ["si_LK"],
     title: `${APP_NAME} — ${APP_TAGLINE}`,
     description:
       "Discover trusted teachers, follow educational content, and share verified learning experiences.",
@@ -50,6 +60,20 @@ export const metadata: Metadata = {
     title: `${APP_NAME} — ${APP_TAGLINE}`,
     images: ["/brand/og-default.png"],
   },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  ...(process.env.GOOGLE_SITE_VERIFICATION
+    ? { verification: { google: process.env.GOOGLE_SITE_VERIFICATION } }
+    : {}),
   icons: {
     icon: [{ url: "/icon.png", type: "image/png" }],
     apple: [{ url: "/apple-icon.png" }],

@@ -5,6 +5,7 @@ import { BulletList, StaticPage, StaticSection } from "@/components/legal/Static
 import { COMPANY_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/terms" },
   title: "Terms of Service",
   description: "The rules for using GuruLens — for students, teachers and everyone in between.",
 };

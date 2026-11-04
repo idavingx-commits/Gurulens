@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 
 import { SearchBar } from "@/components/layout/SearchBar";
@@ -15,7 +16,46 @@ import {
   getTeacherCards,
   getTopReviews,
 } from "@/lib/data";
+import { APP_NAME, COMPANY_NAME } from "@/lib/constants";
 import { compactNumber, truncate } from "@/lib/format";
+import { SITE_URL, jsonLd } from "@/lib/site";
+
+export const metadata: Metadata = {
+  title: { absolute: "GuruLens — Find the Right Teacher in Sri Lanka | ගුරුවරු සොයන්න" },
+  description:
+    "GuruLens (gurulens.us) is Sri Lanka's teacher discovery platform. Find verified tuition teachers by subject, grade and district, read honest student reviews, watch lessons and take quizzes. සිංහල හා English.",
+  alternates: { canonical: "/" },
+};
+
+const HOME_JSON_LD = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "@id": `${SITE_URL}/#organization`,
+      name: APP_NAME,
+      alternateName: ["Guru Lens", "GuruLens Sri Lanka"],
+      url: `${SITE_URL}/`,
+      logo: `${SITE_URL}/brand/gurulens-icon-512.png`,
+      parentOrganization: { "@type": "Organization", name: COMPANY_NAME },
+      areaServed: { "@type": "Country", name: "Sri Lanka" },
+    },
+    {
+      "@type": "WebSite",
+      "@id": `${SITE_URL}/#website`,
+      name: APP_NAME,
+      alternateName: ["Guru Lens", "gurulens.us"],
+      url: `${SITE_URL}/`,
+      inLanguage: ["en", "si"],
+      publisher: { "@id": `${SITE_URL}/#organization` },
+      potentialAction: {
+        "@type": "SearchAction",
+        target: { "@type": "EntryPoint", urlTemplate: `${SITE_URL}/explore?q={search_term_string}` },
+        "query-input": "required name=search_term_string",
+      },
+    },
+  ],
+};
 
 const POPULAR_SUBJECTS = [
   "mathematics",
@@ -96,6 +136,7 @@ export default async function HomePage() {
 
   return (
     <div className="relative isolate">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(HOME_JSON_LD) }} />
       {/* Floating education decorations - corners only */}
       <FloatingDecorations variant="brand" />
 

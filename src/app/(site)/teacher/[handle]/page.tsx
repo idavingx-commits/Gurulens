@@ -37,6 +37,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const name = profile.user.name;
   return {
     title: `${name} — Teacher profile`,
+    alternates: { canonical: `/teacher/${handle}` },
     description:
       profile.tagline ??
       profile.bio?.slice(0, 150) ??
