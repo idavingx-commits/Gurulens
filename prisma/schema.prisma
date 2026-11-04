@@ -1,0 +1,580 @@
+// GuruLens — Teacher Discovery + Education Social Platform
+// Prisma schema (SQLite). Enums are stored as validated strings (SQLite has no native enums).
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ---------------------------------------------------------------------------
+// Users & auth
+// ---------------------------------------------------------------------------
+
+// role: student | teacher | moderator | admin
+// status: active | suspended | pending_deletion
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  role          String    @default("student")
+  status        String    @default("active")
+  name          String
+  avatarKey     String?
+  dateOfBirth   DateTime?
+  ageEligible   Boolean   @default(false)
+  emailVerified Boolean   @default(false)
+  mfaEnabled    Boolean   @default(false)
+  mfaSecret     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  teacherProfile       TeacherProfile?
+  sessions             Session[]
+  posts                Post[]
+  comments             Comment[]
+  reactions            Reaction[]
+  reviews              Review[]             @relation("reviewAuthor")
+  reviewsReceived      Review[]             @relation("reviewTeacher")
+  enrollmentCodes      EnrollmentCode[]
+  eligibilitiesGiven   ReviewEligibility[] @relation("eligTeacher")
+  eligibilitiesHeld    ReviewEligibility[] @relation("eligStudent")
+  reportsFiled         Report[]             @relation("reporter")
+  reportsHandled       Report[]             @relation("reportHandler")
+  moderationActions    ModerationAction[]
+  auditLogs            AuditLog[]
+  following            Follow[]             @relation("follower")
+  followers            Follow[]             @relation("followed")
+  savedPosts           SavedPost[]
+  notifications        Notification[]
+  quizAttempts         QuizAttempt[]
+  membershipTiers      MembershipTier[]
+  memberships          Membership[]
+  verificationRequests VerificationRequest[] @relation("teacherRequests")
+  reviewedRequests     VerificationRequest[] @relation("reviewerRequests")
+  badgeGrants          BadgeGrant[]
+
+  @@index([role, status])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  csrfToken String
+  userAgent String?
+  ip        String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+// ---------------------------------------------------------------------------
+// Teacher profiles & taxonomy
+// ---------------------------------------------------------------------------
+
+model TeacherProfile {
+  id              String    @id @default(cuid())
+  userId          String    @unique
+  handle          String    @unique
+  tagline         String?
+  bio             String?
+  mode            String    @default("both") // physical | online | both
+  experienceYears Int?
+  qualifications  String?
+  consentPublic   Boolean   @default(false)
+  // verifiedStatus: none | pending | in_review | more_info | verified | rejected
+  verifiedStatus  String    @default("none")
+  verifiedAt      DateTime?
+  coverKey        String?
+  contactPhone    String?
+  contactEmail    String?
+  whatsapp        String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subjects  TeacherSubject[]
+  districts TeacherDistrict[]
+  grades    TeacherGrade[]
+  languages TeacherLanguage[]
+
+  @@index([verifiedStatus])
+}
+
+model Subject {
+  id     String @id @default(cuid())
+  slug   String @unique
+  name   String
+  nameSi String?
+
+  teachers TeacherSubject[]
+}
+
+model District {
+  id       String @id @default(cuid())
+  slug     String @unique
+  name     String
+  nameSi   String?
+  province String
+
+  teachers TeacherDistrict[]
+}
+
+model Grade {
+  id    String @id @default(cuid())
+  slug  String @unique
+  name  String
+  order Int
+
+  teachers TeacherGrade[]
+}
+
+model Language {
+  id   String @id @default(cuid())
+  slug String @unique
+  name String
+
+  teachers TeacherLanguage[]
+}
+
+model TeacherSubject {
+  teacherId String
+  subjectId String
+
+  teacher TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject Subject        @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@id([teacherId, subjectId])
+  @@index([subjectId])
+}
+
+model TeacherDistrict {
+  teacherId  String
+  districtId String
+
+  teacher  TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  district District       @relation(fields: [districtId], references: [id], onDelete: Cascade)
+
+  @@id([teacherId, districtId])
+  @@index([districtId])
+}
+
+model TeacherGrade {
+  teacherId String
+  gradeId   String
+
+  teacher TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  grade   Grade          @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+
+  @@id([teacherId, gradeId])
+  @@index([gradeId])
+}
+
+model TeacherLanguage {
+  teacherId  String
+  languageId String
+
+  teacher  TeacherProfile @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  language Language       @relation(fields: [languageId], references: [id], onDelete: Cascade)
+
+  @@id([teacherId, languageId])
+  @@index([languageId])
+}
+
+// ---------------------------------------------------------------------------
+// Verification & badges
+// ---------------------------------------------------------------------------
+
+// status: pending | in_review | more_info | approved | rejected
+model VerificationRequest {
+  id           String    @id @default(cuid())
+  teacherId    String
+  status       String    @default("pending")
+  evidenceKey  String?
+  evidenceNote String?
+  reviewerId   String?
+  actionReason String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  teacher  User  @relation("teacherRequests", fields: [teacherId], references: [id], onDelete: Cascade)
+  reviewer User? @relation("reviewerRequests", fields: [reviewerId], references: [id])
+
+  @@index([status])
+  @@index([teacherId])
+}
+
+// kind: verification | achievement
+model Badge {
+  id          String @id @default(cuid())
+  key         String @unique
+  name        String
+  nameSi      String?
+  description String
+  kind        String @default("achievement")
+
+  grants BadgeGrant[]
+}
+
+model BadgeGrant {
+  id          String    @id @default(cuid())
+  badgeId     String
+  userId      String
+  grantedById String?
+  reason      String?
+  grantedAt   DateTime  @default(now())
+  revokedAt   DateTime?
+  active      Boolean   @default(true)
+
+  badge     Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  user      User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, active])
+  @@index([badgeId])
+}
+
+// ---------------------------------------------------------------------------
+// Content: posts, media, social graph
+// ---------------------------------------------------------------------------
+
+// type: post | announcement | lesson | reel | video
+// moderationStatus: pending | approved | rejected | removed
+model Post {
+  id               String   @id @default(cuid())
+  authorId         String
+  type             String   @default("post")
+  title            String?
+  text             String
+  mediaIds         String? // JSON array of Media ids (images)
+  videoId          String? // Media id for reel/video
+  subjectId        String?
+  gradeId          String?
+  visibility       String   @default("public") // public | members
+  moderationStatus String   @default("approved")
+  likeCount        Int      @default(0)
+  commentCount     Int      @default(0)
+  saveCount        Int      @default(0)
+  viewCount        Int      @default(0)
+  publishedAt      DateTime @default(now())
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  author   User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments Comment[]
+  reactions Reaction[]
+  saves    SavedPost[]
+
+  @@index([authorId, moderationStatus, publishedAt])
+  @@index([type, moderationStatus, publishedAt])
+  @@index([moderationStatus, publishedAt])
+}
+
+// kind: avatar | cover | post_image | video | reel | doc
+// visibility: public | private
+model Media {
+  id          String   @id @default(cuid())
+  ownerId     String
+  kind        String
+  storageKey  String   @unique
+  mimeType    String
+  sizeBytes   Int
+  width       Int?
+  height      Int?
+  durationSec Float?
+  thumbKey    String?
+  visibility  String   @default("public")
+  createdAt   DateTime @default(now())
+
+  @@index([ownerId])
+}
+
+model Follow {
+  followerId String
+  teacherId  String
+  createdAt  DateTime @default(now())
+
+  follower User @relation("follower", fields: [followerId], references: [id], onDelete: Cascade)
+  teacher  User @relation("followed", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, teacherId])
+  @@index([teacherId])
+}
+
+model Reaction {
+  id        String   @id @default(cuid())
+  userId    String
+  postId    String
+  type      String   @default("like") // like | love | clap
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@index([postId])
+}
+
+// moderationStatus: pending | approved | rejected | removed
+model Comment {
+  id               String   @id @default(cuid())
+  postId           String
+  authorId         String
+  text             String
+  moderationStatus String   @default("approved")
+  createdAt        DateTime @default(now())
+
+  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+}
+
+model SavedPost {
+  userId    String
+  postId    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@id([userId, postId])
+  @@index([postId])
+}
+
+// ---------------------------------------------------------------------------
+// Reviews & eligibility
+// ---------------------------------------------------------------------------
+
+// status: published | pending | removed
+model Review {
+  id                String   @id @default(cuid())
+  teacherId         String
+  authorId          String
+  stars             Int
+  clarity           Int?
+  support           Int?
+  organization      Int?
+  feedback          String
+  eligibilityStatus String   @default("verified") // verified | pending
+  status            String   @default("published")
+  teacherReply      String?
+  teacherRepliedAt  DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  teacher User @relation("reviewTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  author  User @relation("reviewAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, authorId])
+  @@index([teacherId, status, createdAt])
+}
+
+// status: claimed | verified | revoked
+model ReviewEligibility {
+  id        String   @id @default(cuid())
+  teacherId String
+  studentId String
+  codeId    String?
+  status    String   @default("claimed")
+  createdAt DateTime @default(now())
+
+  teacher User @relation("eligTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  student User @relation("eligStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  code    EnrollmentCode? @relation(fields: [codeId], references: [id])
+
+  @@unique([teacherId, studentId])
+  @@index([studentId])
+}
+
+model EnrollmentCode {
+  id        String    @id @default(cuid())
+  teacherId String
+  code      String    @unique
+  label     String?
+  maxUses   Int       @default(1)
+  uses      Int       @default(0)
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+
+  teacher    User                @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  eligibilities ReviewEligibility[]
+
+  @@index([teacherId])
+}
+
+// ---------------------------------------------------------------------------
+// Quizzes
+// ---------------------------------------------------------------------------
+
+// moderationStatus: pending | approved | rejected | removed
+model Quiz {
+  id               String   @id @default(cuid())
+  teacherId        String
+  title            String
+  description      String?
+  subjectId        String?
+  gradeId          String?
+  timeLimitMin     Int?
+  published        Boolean  @default(false)
+  moderationStatus String   @default("approved")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  questions QuizQuestion[]
+  attempts  QuizAttempt[]
+
+  @@index([teacherId, published])
+}
+
+model QuizQuestion {
+  id           String @id @default(cuid())
+  quizId       String
+  order        Int
+  text         String
+  options      String // JSON array of strings
+  correctIndex Int
+  explanation  String?
+
+  quiz Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([quizId, order])
+}
+
+model QuizAttempt {
+  id          String   @id @default(cuid())
+  quizId      String
+  studentId   String
+  answers     String // JSON array of chosen indexes
+  score       Int
+  total       Int
+  completedAt DateTime @default(now())
+
+  quiz    Quiz @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([quizId, score])
+  @@index([studentId])
+}
+
+// ---------------------------------------------------------------------------
+// Moderation, reports, audit
+// ---------------------------------------------------------------------------
+
+// targetType: post | comment | review | user | quiz | media
+// status: open | in_review | resolved | dismissed
+model Report {
+  id             String   @id @default(cuid())
+  reporterId     String
+  targetType     String
+  targetId       String
+  reason         String
+  details        String?
+  status         String   @default("open")
+  resolutionNote String?
+  handledById    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  reporter  User  @relation("reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  handledBy User? @relation("reportHandler", fields: [handledById], references: [id])
+
+  @@index([status, createdAt])
+  @@index([targetType, targetId])
+}
+
+model ModerationAction {
+  id         String   @id @default(cuid())
+  actorId    String
+  targetType String
+  targetId   String
+  action     String
+  reason     String?
+  createdAt  DateTime @default(now())
+
+  actor User @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([targetType, targetId])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  action    String
+  targetRef String?
+  meta      String?
+  createdAt DateTime @default(now())
+
+  actor User @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([actorId])
+}
+
+// ---------------------------------------------------------------------------
+// Memberships (Patreon-style support, no payments at launch)
+// ---------------------------------------------------------------------------
+
+model MembershipTier {
+  id          String   @id @default(cuid())
+  teacherId   String
+  name        String
+  description String?
+  priceLkr    Int      @default(0)
+  perks       String? // JSON array
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  teacher   User         @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  members   Membership[]
+
+  @@index([teacherId])
+}
+
+// status: active | cancelled
+model Membership {
+  id       String   @id @default(cuid())
+  tierId   String
+  memberId String
+  status   String   @default("active")
+  joinedAt DateTime @default(now())
+
+  tier   MembershipTier @relation(fields: [tierId], references: [id], onDelete: Cascade)
+  member User           @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([tierId, memberId])
+  @@index([memberId])
+}
+
+// ---------------------------------------------------------------------------
+// Notifications & settings
+// ---------------------------------------------------------------------------
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String?
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
