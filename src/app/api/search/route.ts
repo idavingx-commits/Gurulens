@@ -15,8 +15,8 @@ export const GET = route(async (req: NextRequest) => {
     db.teacherProfile.findMany({
       where: {
         OR: [
-          { handle: { contains: q.toLowerCase() } },
-          { user: { name: { contains: q } } },
+          { handle: { contains: q.toLowerCase(), mode: "insensitive" } },
+          { user: { name: { contains: q, mode: "insensitive" } } },
         ],
       },
       include: {
@@ -27,7 +27,7 @@ export const GET = route(async (req: NextRequest) => {
       take: 6,
     }),
     db.subject.findMany({
-      where: { OR: [{ name: { contains: q } }, { nameSi: { contains: q } }] },
+      where: { OR: [{ name: { contains: q, mode: "insensitive" } }, { nameSi: { contains: q, mode: "insensitive" } }] },
       take: 3,
     }),
   ]);

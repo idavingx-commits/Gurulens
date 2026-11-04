@@ -116,12 +116,12 @@ export async function getTeacherCards(filters: TeacherFilters = {}): Promise<{
   const q = filters.q?.trim();
   if (q) {
     where.OR = [
-      { handle: { contains: q } },
-      { tagline: { contains: q } },
-      { bio: { contains: q } },
-      { user: { name: { contains: q } } },
-      { subjects: { some: { subject: { name: { contains: q } } } } },
-      { subjects: { some: { subject: { nameSi: { contains: q } } } } },
+      { handle: { contains: q, mode: "insensitive" } },
+      { tagline: { contains: q, mode: "insensitive" } },
+      { bio: { contains: q, mode: "insensitive" } },
+      { user: { name: { contains: q, mode: "insensitive" } } },
+      { subjects: { some: { subject: { name: { contains: q, mode: "insensitive" } } } } },
+      { subjects: { some: { subject: { nameSi: { contains: q, mode: "insensitive" } } } } },
     ];
   }
 

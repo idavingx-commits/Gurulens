@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
@@ -14,12 +14,15 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
-    "assets": "python scripts/make-assets.py"
+    "assets": "python scripts/make-assets.py",
+    "postinstall": "prisma generate"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@netlify/blobs": "^11.1.7",
+    "@netlify/database": "^2.0.1",
     "@prisma/client": "^6.19.3",
     "bcryptjs": "^3.0.3",
     "next": "16.4.2",

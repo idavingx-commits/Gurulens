@@ -1,13 +1,26 @@
 import { randomBytes } from "node:crypto";
-import { mkdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
+
+import { getStore } from "@netlify/blobs";
 
 import { UPLOAD_LIMITS, UPLOAD_MIME } from "@/lib/constants";
 
+// Validation root only: files live in Netlify Blobs, keyed by the normalized storage key.
 const STORAGE_ROOT = path.join(process.cwd(), "storage");
 
+/** Netlify Blobs store holding every uploaded file (strongly consistent so reads follow writes). */
+export function mediaStore() {
+  return getStore({ name: "media", consistency: "strong" });
+}
+
+/** Validates a storage key and returns its canonical Blobs key (forward slashes, no leading slash). */
+export function blobKey(key: string): string {
+  const full = storagePath(key);
+  return path.relative(STORAGE_ROOT, full).split(path.sep).join("/");
+}
+
 export function storagePath(key: string): string {
-  const normalized = path.normalize(key).replace(/^([/\\])+/, "");
+  const normalized = path.normalize(key.replace(/\\/g, "/")).replace(/^([/\\])+/, "");
   const full = path.join(STORAGE_ROOT, normalized);
   if (!full.startsWith(STORAGE_ROOT)) {
     throw new Error("Invalid storage key");
@@ -60,20 +73,19 @@ export async function saveUpload(buf: Buffer, kind: string): Promise<StoredUploa
   }
 
   const now = new Date();
-  const dir = path.join(kind, String(now.getFullYear()), String(now.getMonth() + 1).padStart(2, "0"));
+  const dir = path.posix.join(kind, String(now.getFullYear()), String(now.getMonth() + 1).padStart(2, "0"));
   const ext = EXT_BY_MIME[sniffed] ?? "bin";
   const key = `${dir}/${randomBytes(10).toString("hex")}.${ext}`;
 
-  const full = storagePath(key);
-  await mkdir(path.dirname(full), { recursive: true });
-  await writeFile(full, buf);
+  const bytes = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer;
+  await mediaStore().set(blobKey(key), bytes, { metadata: { mimeType: sniffed } });
 
   return { storageKey: key, mimeType: sniffed, sizeBytes: buf.length };
 }
 
 export async function deleteFile(key: string): Promise<void> {
   try {
-    await unlink(storagePath(key));
+    await mediaStore().delete(blobKey(key));
   } catch {
     // Already gone — nothing to do.
   }
