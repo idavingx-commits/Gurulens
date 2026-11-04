@@ -18,10 +18,11 @@
 
 - **Next.js 16.4.2 (App Router)** — BREAKING CHANGES vs training data. Read `node_modules/next/dist/docs/` before writing code (also enforced by the auto-managed block in `AGENTS.md`).
 - React 19, TypeScript (strict), Tailwind v4 (configured via `@theme` in `src/app/globals.css` — no tailwind.config).
-- DB: SQLite + Prisma → `prisma/schema.prisma`, dev db `prisma/dev.db`, seed `prisma/seed.ts`.
+- DB: **Netlify Database (Postgres) + Prisma** → `prisma/schema.prisma` (`provider = "postgresql"`, `url = env("NETLIFY_DB_URL")`, injected by Netlify at runtime). Seed `prisma/seed.ts` (local/dev only). **Schema changes need a new SQL file in `netlify/database/migrations/`** — generate with `npx prisma migrate diff --from-schema-datasource ... --to-schema-datamodel prisma/schema.prisma --script` (or `--from-empty` for the first); Netlify applies migrations on deploy. Never edit an applied migration. Reference data (languages/subjects/districts/grades/badges/settings) lives in migration `20261104193100_seed_reference_data.sql`.
+- Search uses `contains` + `mode: "insensitive"` (Postgres is case-sensitive, unlike SQLite).
 - Tests: Vitest, config `vitest.config.ts` (node env, `@` → `src` alias), suites in `tests/` (ranking, format, totp, rate-limit, validation, media — 61 tests).
 - Auth: DB-backed sessions (httpOnly `gl_session`) + CSRF double-submit (`gl_csrf` cookie ↔ `x-csrf-token` header via `src/lib/client.ts`).
-- Media: local filesystem `storage/` served through `/api/media/[key]`; seed assets in `storage/seed/`, brand assets in `public/brand/`.
+- Media: **Netlify Blobs** store `media` (strong consistency) via `mediaStore()`/`blobKey()` in `src/lib/media.ts`, served through `/api/media/[id]`; brand assets in `public/brand/`. Local `storage/` folder is no longer used at runtime.
 
 Key dirs: `src/app/(site)` public pages, `src/app/(auth)` login/register, `src/app/(studio)` teacher studio, `src/app/(admin)` console, `src/lib/*` (db, auth, api, rate-limit, ranking, audit, media, totp, format, validation, client, data), `src/components/*` (ui, layout, auth, teacher, post, moderation, admin, studio, legal).
 
@@ -104,6 +105,15 @@ Key dirs: `src/app/(site)` public pages, `src/app/(auth)` login/register, `src/a
 - Full-page visual review on the user's ultra-wide monitor (agent can't see images).
 
 ## 9. Changelog (newest first)
+
+### 2026-11-04 — Fixed production outage on Netlify (every page returned 500)
+- Cause: Prisma was configured for SQLite with `DATABASE_URL`, which doesn't exist on Netlify (`PrismaClientInitializationError: Environment variable not found: DATABASE_URL`). Local `storage/` uploads also can't persist on serverless.
+- Switched Prisma to Postgres on Netlify Database (`NETLIFY_DB_URL`), added `rhel-openssl-3.0.x` binary target, `prisma generate` in `build` + `postinstall`.
+- Added migrations `netlify/database/migrations/20261104193000_create_initial_schema.sql` (full schema) and `20261104193100_seed_reference_data.sql` (languages, subjects, districts, grades, badges, settings). Validated with PGlite.
+- Uploads/media moved to Netlify Blobs (`@netlify/blobs`); `/api/media/[id]` reads from Blobs (range requests still supported).
+- Search queries made case-insensitive; `storagePath` now treats `\` as a separator on Linux (fixed failing traversal test).
+- Production DB starts empty apart from reference data: no demo teachers/admin. Register an account, then promote it to admin (see §5).
+- `.netlify/**` added to eslint ignores. Verified: typecheck, eslint (src/tests), 61 tests green.
 
 ### 2026-10-25 — Fixed Auth Pages + Site-wide Floating Decorations
 - **Auth pages completely redesigned** to fix text visibility issues:

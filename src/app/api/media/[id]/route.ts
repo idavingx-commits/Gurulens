@@ -1,12 +1,9 @@
-import { createReadStream } from "node:fs";
-import { stat } from "node:fs/promises";
-import { Readable } from "node:stream";
 import { type NextRequest } from "next/server";
 
 import { getAuth } from "@/lib/auth";
 import { ADMIN_ROLES } from "@/lib/constants";
 import { db } from "@/lib/db";
-import { storagePath } from "@/lib/media";
+import { blobKey, mediaStore } from "@/lib/media";
 
 export const runtime = "nodejs";
 
@@ -26,14 +23,14 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
     if (!allowed) return new Response("Forbidden", { status: 403 });
   }
 
-  let full: string;
-  let info;
+  let data: ArrayBuffer | null;
   try {
-    full = storagePath(media.storageKey);
-    info = await stat(full);
+    data = await mediaStore().get(blobKey(media.storageKey), { type: "arrayBuffer" });
   } catch {
-    return new Response("Not found", { status: 404 });
+    data = null;
   }
+  if (!data) return new Response("Not found", { status: 404 });
+  const info = { size: data.byteLength };
 
   const etag = `"${media.id}-${info.size}"`;
   const cacheControl =
@@ -68,10 +65,7 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
         });
       }
 
-      const stream = Readable.toWeb(
-        createReadStream(full, { start, end }),
-      ) as unknown as ReadableStream;
-      return new Response(stream, {
+      return new Response(data.slice(start, end + 1), {
         status: 206,
         headers: {
           ...headers,
@@ -82,8 +76,7 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
     }
   }
 
-  const stream = Readable.toWeb(createReadStream(full)) as unknown as ReadableStream;
-  return new Response(stream, {
+  return new Response(data, {
     headers: { ...headers, "content-length": String(info.size) },
   });
 }

@@ -1,13 +1,14 @@
 // GuruLens — Teacher Discovery + Education Social Platform
-// Prisma schema (SQLite). Enums are stored as validated strings (SQLite has no native enums).
+// Prisma schema (Postgres on Netlify Database). Enums are stored as validated strings.
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("NETLIFY_DB_URL")
 }
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 // ---------------------------------------------------------------------------
