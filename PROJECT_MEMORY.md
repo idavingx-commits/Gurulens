@@ -106,6 +106,9 @@ Key dirs: `src/app/(site)` public pages, `src/app/(auth)` login/register, `src/a
 
 ## 9. Changelog (newest first)
 
+### 2026-11-04 — WhatsApp Channel promo pop-up
+- `src/components/layout/WhatsAppChannelPopup.tsx` (client), mounted in `(site)/layout.tsx`: shows `public/promo/whatsapp-channel.jpg` 1.5s after load, once per browser session (`sessionStorage` key `gl_wa_popup_seen`). Brand-gradient "Join Channel" button → `https://chat.whatsapp.com/Fe8Z0LIzB779B0PaB9hVQl`. Closes via X, backdrop, Esc or "Maybe later". To change the link/image edit `CHANNEL_URL` / the image file.
+
 ### 2026-11-04 — SEO: rank for "GuruLens" on Google
 - New `src/lib/site.ts` (`SITE_URL`, `jsonLd()`): canonical URL = `NEXT_PUBLIC_SITE_URL` → `https://gurulens.us` on Netlify/production → localhost in dev. Previously sitemap/robots/metadataBase pointed at `http://localhost:3000` in production because the env var was unset.
 - Home page: own title/description with brand + domain, canonical `/`, JSON-LD Organization + WebSite (with SearchAction → `/explore?q=`). Canonicals added to explore/about/reels/legal/teacher pages.
