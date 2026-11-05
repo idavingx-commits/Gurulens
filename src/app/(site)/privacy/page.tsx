@@ -5,6 +5,7 @@ import { BulletList, StaticPage, StaticSection } from "@/components/legal/Static
 import { COMPANY_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/privacy" },
   title: "Privacy Policy",
   description:
     "What data GuruLens collects, why we collect it, and the rights you have under Sri Lanka's data protection law.",

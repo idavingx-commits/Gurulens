@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/ui/primitives";
 import { getTaxonomy, getTeacherCards } from "@/lib/data";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/explore" },
   title: "Explore teachers",
   description:
     "Search and compare verified teachers across Sri Lanka by subject, grade, district, language and teaching mode.",

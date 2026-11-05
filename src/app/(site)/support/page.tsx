@@ -5,6 +5,7 @@ import { BulletList, StaticPage, StaticSection } from "@/components/legal/Static
 import { COMPANY_NAME } from "@/lib/constants";
 
 export const metadata: Metadata = {
+  alternates: { canonical: "/support" },
   title: "Support",
   description:
     "Get help with GuruLens — reports, appeals, verification questions, account issues and safety concerns.",
