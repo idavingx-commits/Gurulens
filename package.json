@@ -50,7 +50,8 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",
-    "vitest": "^5.0.5"
+    "vitest": "^5.0.5",
+    "wrangler": "^4.162.0"
   },
   "allowScripts": {
     "@prisma/client@6.19.3": true,
