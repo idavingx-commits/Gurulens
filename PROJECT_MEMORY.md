@@ -16,13 +16,14 @@
 
 ## 2. Stack & structure
 
-- **Next.js 16.4.2 (App Router)** — BREAKING CHANGES vs training data. Read `node_modules/next/dist/docs/` before writing code (also enforced by the auto-managed block in `AGENTS.md`).
+- **Next.js 16.4.6 (App Router)** — BREAKING CHANGES vs training data. Read `node_modules/next/dist/docs/` before writing code (also enforced by the auto-managed block in `AGENTS.md`). OpenNext requires Next ≥ 16.4.5.
 - React 19, TypeScript (strict), Tailwind v4 (configured via `@theme` in `src/app/globals.css` — no tailwind.config).
-- DB: **Netlify Database (Postgres) + Prisma** → `prisma/schema.prisma` (`provider = "postgresql"`, `url = env("NETLIFY_DB_URL")`, injected by Netlify at runtime). Seed `prisma/seed.ts` (local/dev only). **Schema changes need a new SQL file in `netlify/database/migrations/`** — generate with `npx prisma migrate diff --from-schema-datasource ... --to-schema-datamodel prisma/schema.prisma --script` (or `--from-empty` for the first); Netlify applies migrations on deploy. Never edit an applied migration. Reference data (languages/subjects/districts/grades/badges/settings) lives in migration `20261104193100_seed_reference_data.sql`.
+- DB: **Neon Postgres + Prisma driver adapter** → `prisma/schema.prisma` (`provider = "postgresql"`, `url = env("DATABASE_URL")` pooled, `directUrl = env("DIRECT_URL")`, `engineType = "client"`). Runtime client: `@prisma/adapter-pg` (`pg` + `pg-cloudflare`). **Schema changes need a migration in `prisma/migrations/`** — `npm run db:migrate` locally, `npm run db:migrate:deploy` to apply. Prisma CLI reads `.env` only (not `.env.local`). Seed `prisma/seed.ts` (local/dev only; never run against production data you care about).
+- Hosting: **Cloudflare Workers** via `@opennextjs/cloudflare` (`wrangler.jsonc`, `open-next.config.ts`); `npm run cf:build` / `cf:preview` / `cf:deploy`. GitHub → Workers Builds auto-deploy.
 - Search uses `contains` + `mode: "insensitive"` (Postgres is case-sensitive, unlike SQLite).
-- Tests: Vitest, config `vitest.config.ts` (node env, `@` → `src` alias), suites in `tests/` (ranking, format, totp, rate-limit, validation, media — 61 tests).
+- Tests: Vitest, config `vitest.config.ts` (node env, `@` → `src` alias), suites in `tests/` (ranking, format, totp, rate-limit, validation, media — 60 tests).
 - Auth: DB-backed sessions (httpOnly `gl_session`) + CSRF double-submit (`gl_csrf` cookie ↔ `x-csrf-token` header via `src/lib/client.ts`).
-- Media: **Netlify Blobs** store `media` (strong consistency) via `mediaStore()`/`blobKey()` in `src/lib/media.ts`, served through `/api/media/[id]`; brand assets in `public/brand/`. Local `storage/` folder is no longer used at runtime.
+- Media: **Cloudflare R2** via the S3 API (`aws4fetch`) in `src/lib/media.ts`, served through `/api/media/[id]`. Public files 302-redirect to `MEDIA_PUBLIC_URL`; private docs require auth. Large videos use presigned direct-to-R2 uploads (`/api/upload/presign` + `/api/upload/complete`).
 
 Key dirs: `src/app/(site)` public pages, `src/app/(auth)` login/register, `src/app/(studio)` teacher studio, `src/app/(admin)` console, `src/lib/*` (db, auth, api, rate-limit, ranking, audit, media, totp, format, validation, client, data), `src/components/*` (ui, layout, auth, teacher, post, moderation, admin, studio, legal).
 
@@ -50,16 +51,18 @@ Key dirs: `src/app/(site)` public pages, `src/app/(auth)` login/register, `src/a
 
 ## 5. Accounts, roles & admin access
 
-| Purpose | Email | Password |
-|---|---|---|
-| Admin | `admin@gurulens.lk` | `GuruLens#Admin2026` |
-| Moderator | `moderator@gurulens.lk` | `GuruLens#Admin2026` |
-| Demo teacher | `anuradha-perera@teachers.gurulens.lk` | `Demo#2026` |
-| Demo student | `kavindu.silva@students.gurulens.lk` | `Demo#2026` |
+Credentials are **never stored in this repository**. `prisma/seed.ts` generates strong random passwords for the admin/moderator and demo accounts (or uses `SEED_ADMIN_PASSWORD` / `SEED_DEMO_PASSWORD` when provided) and prints them once to the terminal. Store them in a password manager.
+
+| Purpose | Email |
+|---|---|
+| Admin (bootstrap) | value of `SEED_ADMIN_EMAIL` (default `admin@gurulens.lk`) |
+| Moderator | `moderator@gurulens.lk` (same password as admin) |
+| Demo teacher | `anuradha-perera@teachers.gurulens.lk` |
+| Demo student | `kavindu.silva@students.gurulens.lk` |
 
 - Roles: `student | teacher | moderator | admin`. Admin console `/admin` (moderator too); teacher studio `/studio`; students land on `/feed`.
 - **Promote any account**: `npx tsx scripts/set-role.ts <email> [role]` (default role `admin`). Verified 2026-10-18: admin login → `GET /admin` 200.
-- Dev DB test artifacts (safe to ignore/delete): `test.student.<ts>`, `browser.test.<ts>`, `final.check.<ts>` @example.com (password `Test#2026`), earlier `smoke.*` users (`Smoke#123`), enrollment codes `GL-SMOKE-*`.
+- Dev DB test artifacts (safe to ignore/delete): `test.student.<ts>`, `browser.test.<ts>`, `final.check.<ts>` @example.com, earlier `smoke.*` users, enrollment codes `GL-SMOKE-*`. Passwords for these throwaway accounts are not recorded here.
 - Enrollment codes format: `GL-<handle6>-<1000+i>` e.g. `GL-ANURAD-1000` (demo teacher).
 
 ## 6. Core systems — rules that bite
@@ -106,6 +109,17 @@ Key dirs: `src/app/(site)` public pages, `src/app/(auth)` login/register, `src/a
 
 ## 9. Changelog (newest first)
 
+### 2026-11-16 — Neon + Cloudflare Workers migration (in progress)
+- Prisma datasource switched from `NETLIFY_DB_URL` to `DATABASE_URL` (pooled) + `DIRECT_URL` (direct), generator set to `engineType = "client"` with `@prisma/adapter-pg`. Native Prisma engine removed so the client can run in Workers.
+- `src/lib/db.ts` is now a lazy proxy around a driver-adapter client; imports no longer require `DATABASE_URL` at build time.
+- Baseline migration generated at `prisma/migrations/0001_init` (33 tables, 51 indexes) + `migration_lock.toml`. Old `netlify/database/migrations/*.sql` are historical and are not applied to Neon.
+- Media moved from Netlify Blobs to Cloudflare R2 (S3 API via `aws4fetch`). Public media 302-redirects to `MEDIA_PUBLIC_URL`; private docs stay behind the auth check. New presigned flow `/api/upload/presign` → browser PUT → `/api/upload/complete` keeps the 200 MB video limit despite the Workers 100 MB body limit.
+- Added `@opennextjs/cloudflare` + `wrangler.jsonc` + `open-next.config.ts`; `next` upgraded to 16.4.6 (OpenNext minimum 16.4.5). Scripts: `cf:build`, `cf:preview`, `cf:deploy`.
+- Sitemap is now `force-dynamic` so new teachers appear without a rebuild.
+- Security: removed hardcoded admin/demo passwords from `prisma/seed.ts` and this file. Seed now generates random passwords and prints them once.
+- Docs: `.env.example`, `docs/ENVIRONMENT.md`, `docs/DEPLOYMENT.md`, `docs/PROJECT_STATUS.md`, README stack/deploy section.
+- Verified: typecheck, lint, 60 tests, Next build, OpenNext build, `wrangler deploy --dry-run` (2.65 MB gzip). Not verified: Neon connection/seed, R2 round-trip, Cloudflare deploy, DNS — see `docs/PROJECT_STATUS.md`.
+
 ### 2026-11-04 — WhatsApp Channel promo pop-up
 - `src/components/layout/WhatsAppChannelPopup.tsx` (client), mounted in `(site)/layout.tsx`: shows `public/promo/whatsapp-channel.jpg` 1.5s after load, once per browser session (`sessionStorage` key `gl_wa_popup_seen`). Brand-gradient "Join Channel" button → `https://chat.whatsapp.com/Fe8Z0LIzB779B0PaB9hVQl`. Closes via X, backdrop, Esc or "Maybe later". To change the link/image edit `CHANNEL_URL` / the image file.
 
@@ -116,9 +130,9 @@ Key dirs: `src/app/(site)` public pages, `src/app/(auth)` login/register, `src/a
 - Sitemap no longer lists login-only/disallowed pages (`/feed`, `/register/*`); robots disallows `/feed`.
 - Manual follow-up: verify gurulens.us in Google Search Console and submit `https://gurulens.us/sitemap.xml`.
 
-### 2026-11-04 — Admin account on the live database
-- Migration `20261104200000_create_admin_account.sql` creates `admin@gurulens.lk` (role admin, active) with a bcrypt hash of the §5 admin password, or promotes/resets an existing account with that email. Only the hash is stored in the file.
-- Note: the repo is public and §5 lists the password in plain text — change it after first login.
+### 2026-11-04 — Admin account on the live database (historical, Netlify era)
+- Migration `20261104200000_create_admin_account.sql` created `admin@gurulens.lk` on the old Netlify database. It is **not** applied to Neon.
+- The Neon baseline (`prisma/migrations/0001_init`) contains schema only. The admin account is created by `prisma/seed.ts` with a generated password printed once — no credentials live in the repo.
 
 ### 2026-11-04 — Fixed production outage on Netlify (every page returned 500)
 - Cause: Prisma was configured for SQLite with `DATABASE_URL`, which doesn't exist on Netlify (`PrismaClientInitializationError: Environment variable not found: DATABASE_URL`). Local `storage/` uploads also can't persist on serverless.

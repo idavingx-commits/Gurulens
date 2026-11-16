@@ -1,3 +1,4 @@
+import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 
 const VALID_ROLES = ["student", "teacher", "moderator", "admin"] as const;
@@ -14,7 +15,13 @@ async function main() {
     process.exit(1);
   }
 
-  const db = new PrismaClient();
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    console.error("DATABASE_URL is required.");
+    process.exit(1);
+  }
+
+  const db = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
   try {
     const user = await db.user
       .update({ where: { email }, data: { role } })

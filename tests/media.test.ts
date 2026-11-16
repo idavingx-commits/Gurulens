@@ -1,8 +1,12 @@
-import path from "node:path";
-
 import { describe, expect, it } from "vitest";
 
-import { isImageMime, isVideoMime, sniffMime, storagePath } from "@/lib/media";
+import {
+  buildStorageKey,
+  extensionForMime,
+  isImageMime,
+  isVideoMime,
+  sniffMime,
+} from "@/lib/media";
 
 function buf(...bytes: number[]): Buffer {
   const b = Buffer.alloc(Math.max(12, bytes.length));
@@ -10,20 +14,19 @@ function buf(...bytes: number[]): Buffer {
   return b;
 }
 
-describe("storagePath", () => {
-  it("resolves keys under the storage root", () => {
-    const full = storagePath("avatar/2026/10/abc.png");
-    expect(full.startsWith(path.join(process.cwd(), "storage"))).toBe(true);
+describe("storage keys", () => {
+  it("maps mime types to file extensions", () => {
+    expect(extensionForMime("image/png")).toBe("png");
+    expect(extensionForMime("image/jpeg")).toBe("jpg");
+    expect(extensionForMime("video/mp4")).toBe("mp4");
+    expect(extensionForMime("application/pdf")).toBe("pdf");
+    expect(extensionForMime("application/x-unknown")).toBe("bin");
   });
 
-  it("strips leading separators", () => {
-    const full = storagePath("/avatar/x.png");
-    expect(full).toBe(path.join(process.cwd(), "storage", "avatar", "x.png"));
-  });
-
-  it("blocks path traversal", () => {
-    expect(() => storagePath("../../etc/passwd")).toThrow("Invalid storage key");
-    expect(() => storagePath("..\\..\\windows\\system32")).toThrow("Invalid storage key");
+  it("builds kind/year/month keys with random names", () => {
+    const key = buildStorageKey("avatar", "image/png");
+    expect(key).toMatch(/^avatar\/\d{4}\/\d{2}\/[a-f0-9]{20}\.png$/);
+    expect(buildStorageKey("avatar", "image/png")).not.toBe(key);
   });
 });
 

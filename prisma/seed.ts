@@ -1,9 +1,16 @@
+import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-const db = new PrismaClient();
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+  throw new Error("DATABASE_URL is required to run the seed script.");
+}
+
+const db = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 
 const TEACHER_NAMES = [
   "Anuradha Perera",
@@ -201,7 +208,17 @@ async function main() {
   const badgeByKey = new Map(badges.map((b) => [b.key, b]));
 
   const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@gurulens.lk";
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "GuruLens#Admin2026";
+
+  // Never ship a default admin password. If the operator does not provide one,
+  // generate a strong random secret and print it exactly once.
+  function resolveSeedPassword(envName: string): { value: string; generated: boolean } {
+    const fromEnv = process.env[envName]?.trim();
+    if (fromEnv && fromEnv.length >= 12) return { value: fromEnv, generated: false };
+    return { value: `GL-${randomBytes(12).toString("base64url")}`, generated: true };
+  }
+
+  const adminSecret = resolveSeedPassword("SEED_ADMIN_PASSWORD");
+  const adminPassword = adminSecret.value;
   const adminHash = await bcrypt.hash(adminPassword, 11);
 
   const admin = await db.user.create({
@@ -211,7 +228,8 @@ async function main() {
     data: { email: "moderator@gurulens.lk", passwordHash: adminHash, role: "moderator", name: "GuruLens Moderator", ageEligible: true, emailVerified: true },
   });
 
-  const demoPassword = "Demo#2026";
+  const demoSecret = resolveSeedPassword("SEED_DEMO_PASSWORD");
+  const demoPassword = demoSecret.value;
   const demoHash = await bcrypt.hash(demoPassword, 11);
 
   // Media rows for seed files (one row per physical file, shared by references)
@@ -534,11 +552,21 @@ async function main() {
   await db.setting.create({ data: { key: "ranking_methodology_version", value: "1.0-bayes-wilson" } });
   await db.setting.create({ data: { key: "platform_notice", value: "Beta: please report any issues to support." } });
 
-  console.log("Done.");
-  console.log(`Admin login:    ${adminEmail} / ${adminPassword}`);
-  console.log(`Moderator:      moderator@gurulens.lk / ${adminPassword}`);
-  console.log(`Demo teacher:   anuradha-perera@teachers.gurulens.lk / ${demoPassword}`);
-  console.log(`Demo student:   kavindu.silva@students.gurulens.lk / ${demoPassword}`);
+  console.log("Seed complete.");
+  console.log(`Admin:          ${adminEmail}`);
+  console.log(
+    adminSecret.generated
+      ? `  generated password (store it now): ${adminPassword}`
+      : "  password: taken from SEED_ADMIN_PASSWORD",
+  );
+  console.log("Moderator:      moderator@gurulens.lk (same password as admin)");
+  console.log("Demo teacher:   anuradha-perera@teachers.gurulens.lk");
+  console.log("Demo student:   kavindu.silva@students.gurulens.lk");
+  console.log(
+    demoSecret.generated
+      ? `  generated demo password (store it now): ${demoPassword}`
+      : "  demo password: taken from SEED_DEMO_PASSWORD",
+  );
 }
 
 main()

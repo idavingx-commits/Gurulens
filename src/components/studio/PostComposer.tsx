@@ -9,7 +9,7 @@ import { Select } from "@/components/ui/input";
 import { ProgressBar } from "@/components/ui/primitives";
 import { useToast } from "@/components/ui/toast";
 import { Field, Input, Textarea } from "@/components/ui/input";
-import { apiFetch, apiUpload, ClientApiError } from "@/lib/client";
+import { apiFetch, apiUpload, apiUploadDirect, ClientApiError } from "@/lib/client";
 import { cn } from "@/lib/format";
 
 type Option = { id: string; name: string };
@@ -87,12 +87,9 @@ export function PostComposer({
     setVideoBusy(true);
     setVideoPct(0);
     try {
-      const form = new FormData();
-      form.append("kind", "video");
-      form.append("file", file);
-      const res = await apiUpload<{ media: { id: string; url: string } }>(
-        "/api/upload",
-        form,
+      const res = await apiUploadDirect<{ media: { id: string; url: string } }>(
+        file,
+        "video",
         setVideoPct,
       );
       setVideo(res.media);

@@ -13,7 +13,11 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:preview": "opennextjs-cloudflare preview",
+    "cf:deploy": "opennextjs-cloudflare deploy",
     "assets": "python scripts/make-assets.py",
     "postinstall": "prisma generate"
   },
@@ -21,11 +25,14 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@netlify/blobs": "^11.1.7",
-    "@netlify/database": "^2.0.1",
+    "@opennextjs/cloudflare": "^1.20.17",
+    "@prisma/adapter-pg": "^6.19.3",
     "@prisma/client": "^6.19.3",
+    "aws4fetch": "^1.0.20",
     "bcryptjs": "^3.0.3",
-    "next": "16.4.2",
+    "next": "^16.4.6",
+    "pg": "^8.23.1",
+    "pg-cloudflare": "^1.4.1",
     "qrcode": "^1.5.4",
     "react": "19.3.0",
     "react-dom": "19.3.0",
@@ -38,7 +45,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.4.2",
+    "eslint-config-next": "^16.4.6",
     "prisma": "^6.19.3",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
@@ -50,6 +57,7 @@
     "@prisma/engines@6.19.3": true,
     "esbuild@0.28.2": true,
     "prisma@6.19.3": true,
-    "unrs-resolver@1.12.2": true
+    "unrs-resolver@1.12.2": true,
+    "workerd@1.20261113.1": true
   }
 }

@@ -1,23 +1,15 @@
 import { type NextRequest } from "next/server";
 
 import { ApiError, ok, requireAuth, route } from "@/lib/api";
-import { ADMIN_ROLES } from "@/lib/constants";
-import { db } from "@/lib/db";
 import { saveUpload } from "@/lib/media";
+import { finalizeUpload, isUploadKind } from "@/lib/upload-record";
 
 export const runtime = "nodejs";
 
-const KINDS = ["avatar", "cover", "post_image", "video", "doc"] as const;
-type Kind = (typeof KINDS)[number];
-
-const VISIBILITY: Record<Kind, string> = {
-  avatar: "public",
-  cover: "public",
-  post_image: "public",
-  video: "public",
-  doc: "private",
-};
-
+/**
+ * Multipart upload for small files (avatars, covers, images, documents).
+ * Large videos use the presigned direct-to-R2 flow at /api/upload/presign.
+ */
 export const POST = route(async (req: NextRequest) => {
   const auth = await requireAuth(req);
 
@@ -28,10 +20,10 @@ export const POST = route(async (req: NextRequest) => {
   const kindRaw = form.get("kind");
 
   if (!(file instanceof File)) throw new ApiError(400, "No file provided.", "no_file");
-  if (typeof kindRaw !== "string" || !KINDS.includes(kindRaw as Kind)) {
+  if (typeof kindRaw !== "string" || !isUploadKind(kindRaw)) {
     throw new ApiError(400, "Invalid upload kind.", "bad_kind");
   }
-  const kind = kindRaw as Kind;
+  const kind = kindRaw;
 
   if (kind === "doc" && auth.user.role === "student") {
     throw new ApiError(403, "Only teachers can upload documents.", "forbidden");
@@ -47,27 +39,14 @@ export const POST = route(async (req: NextRequest) => {
     throw new ApiError(400, message, "upload_failed");
   }
 
-  const media = await db.media.create({
-    data: {
-      ownerId: auth.user.id,
-      kind,
-      storageKey: stored.storageKey,
-      mimeType: stored.mimeType,
-      sizeBytes: stored.sizeBytes,
-      visibility: VISIBILITY[kind],
-    },
+  const media = await finalizeUpload({
+    userId: auth.user.id,
+    role: auth.user.role,
+    kind,
+    storageKey: stored.storageKey,
+    mimeType: stored.mimeType,
+    sizeBytes: stored.sizeBytes,
   });
-
-  if (kind === "avatar") {
-    await db.user.update({ where: { id: auth.user.id }, data: { avatarKey: media.id } });
-  }
-
-  if (kind === "cover" && (auth.user.role === "teacher" || ADMIN_ROLES.includes(auth.user.role))) {
-    const profile = await db.teacherProfile.findUnique({ where: { userId: auth.user.id } });
-    if (profile) {
-      await db.teacherProfile.update({ where: { id: profile.id }, data: { coverKey: media.id } });
-    }
-  }
 
   return ok({
     media: {

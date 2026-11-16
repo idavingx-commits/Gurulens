@@ -77,3 +77,51 @@ export async function apiUpload<T>(
     xhr.send(formData);
   });
 }
+
+type PresignResponse = {
+  upload: {
+    key: string;
+    url: string;
+    headers: Record<string, string>;
+  };
+};
+
+/**
+ * Direct-to-R2 upload for large files (videos).
+ * Bypasses the Cloudflare Worker 100 MB request-body limit by uploading
+ * straight to the bucket with a short-lived signed URL.
+ */
+export async function apiUploadDirect<T>(
+  file: File,
+  kind: string,
+  onProgress?: (pct: number) => void,
+): Promise<T> {
+  const presign = await apiFetch<PresignResponse>("/api/upload/presign", {
+    method: "POST",
+    body: { kind, contentType: file.type, size: file.size },
+  });
+
+  await new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("PUT", presign.upload.url);
+    for (const [header, value] of Object.entries(presign.upload.headers)) {
+      xhr.setRequestHeader(header, value);
+    }
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) {
+        onProgress(Math.round((e.loaded / e.total) * 100));
+      }
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      else reject(new ClientApiError("Storage upload failed.", xhr.status));
+    };
+    xhr.onerror = () => reject(new ClientApiError("Network error during upload.", 0));
+    xhr.send(file);
+  });
+
+  return apiFetch<T>("/api/upload/complete", {
+    method: "POST",
+    body: { key: presign.upload.key, kind },
+  });
+}

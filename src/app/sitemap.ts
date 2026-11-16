@@ -3,6 +3,10 @@ import type { MetadataRoute } from "next";
 import { db } from "@/lib/db";
 import { SITE_URL as siteUrl } from "@/lib/site";
 
+// Always query the database at request time so newly approved teachers appear
+// without a rebuild (the previous static build cached an empty list).
+export const dynamic = "force-dynamic";
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 

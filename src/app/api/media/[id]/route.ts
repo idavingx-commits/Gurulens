@@ -3,7 +3,7 @@ import { type NextRequest } from "next/server";
 import { getAuth } from "@/lib/auth";
 import { ADMIN_ROLES } from "@/lib/constants";
 import { db } from "@/lib/db";
-import { blobKey, mediaStore } from "@/lib/media";
+import { getObject, publicMediaUrl } from "@/lib/media";
 
 export const runtime = "nodejs";
 
@@ -23,60 +23,48 @@ export async function GET(req: NextRequest, ctx: Ctx): Promise<Response> {
     if (!allowed) return new Response("Forbidden", { status: 403 });
   }
 
-  let data: ArrayBuffer | null;
-  try {
-    data = await mediaStore().get(blobKey(media.storageKey), { type: "arrayBuffer" });
-  } catch {
-    data = null;
-  }
-  if (!data) return new Response("Not found", { status: 404 });
-  const info = { size: data.byteLength };
-
-  const etag = `"${media.id}-${info.size}"`;
-  const cacheControl =
-    media.visibility === "public"
-      ? "public, max-age=31536000, immutable"
-      : "private, max-age=3600";
-
-  if (req.headers.get("if-none-match") === etag) {
-    return new Response(null, { status: 304 });
-  }
-
-  const headers: Record<string, string> = {
-    "content-type": media.mimeType,
-    "accept-ranges": "bytes",
-    "cache-control": cacheControl,
-    etag,
-  };
-
-  const range = req.headers.get("range");
-  if (range) {
-    const match = /^bytes=(\d*)-(\d*)$/.exec(range.trim());
-    if (match) {
-      const start = match[1] ? Number.parseInt(match[1], 10) : 0;
-      const end = match[2]
-        ? Math.min(Number.parseInt(match[2], 10), info.size - 1)
-        : info.size - 1;
-
-      if (Number.isNaN(start) || Number.isNaN(end) || start > end || start >= info.size) {
-        return new Response(null, {
-          status: 416,
-          headers: { "content-range": `bytes */${info.size}` },
-        });
-      }
-
-      return new Response(data.slice(start, end + 1), {
-        status: 206,
+  // Public files are served straight from the R2 custom domain so byte-range
+  // video requests never flow through the Worker.
+  if (media.visibility === "public") {
+    const cdnUrl = publicMediaUrl(media.storageKey);
+    if (cdnUrl) {
+      return new Response(null, {
+        status: 302,
         headers: {
-          ...headers,
-          "content-length": String(end - start + 1),
-          "content-range": `bytes ${start}-${end}/${info.size}`,
+          location: cdnUrl,
+          "cache-control": "public, max-age=300",
         },
       });
     }
   }
 
-  return new Response(data, {
-    headers: { ...headers, "content-length": String(info.size) },
-  });
+  let upstream: Response;
+  try {
+    upstream = await getObject(media.storageKey, req.headers.get("range"));
+  } catch {
+    return new Response("Not found", { status: 404 });
+  }
+
+  if (!upstream.ok) return new Response("Not found", { status: 404 });
+
+  const headers = new Headers();
+  headers.set("content-type", media.mimeType);
+  headers.set("accept-ranges", "bytes");
+  headers.set(
+    "cache-control",
+    media.visibility === "public"
+      ? "public, max-age=31536000, immutable"
+      : "private, max-age=3600",
+  );
+
+  const length = upstream.headers.get("content-length");
+  if (length) headers.set("content-length", length);
+
+  const contentRange = upstream.headers.get("content-range");
+  if (contentRange) headers.set("content-range", contentRange);
+
+  const etag = upstream.headers.get("etag");
+  if (etag) headers.set("etag", etag);
+
+  return new Response(upstream.body, { status: upstream.status, headers });
 }
