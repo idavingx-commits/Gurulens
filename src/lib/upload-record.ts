@@ -23,7 +23,7 @@ export function isStorageKeyForKind(key: string, kind: UploadKind): boolean {
 
 /**
  * Persists an uploaded object as a Media row and wires avatar/cover pointers.
- * Shared by the classic multipart route and the direct-to-R2 presigned flow.
+ * Shared by the classic multipart route and the direct-to-storage presigned flow.
  */
 export async function finalizeUpload(params: {
   userId: string;

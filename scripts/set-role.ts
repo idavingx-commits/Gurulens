@@ -15,9 +15,9 @@ async function main() {
     process.exit(1);
   }
 
-  const connectionString = process.env.DATABASE_URL;
+  const connectionString = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
   if (!connectionString) {
-    console.error("DATABASE_URL is required.");
+    console.error("DIRECT_URL or DATABASE_URL is required.");
     process.exit(1);
   }
 

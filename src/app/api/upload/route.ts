@@ -8,7 +8,7 @@ export const runtime = "nodejs";
 
 /**
  * Multipart upload for small files (avatars, covers, images, documents).
- * Large videos use the presigned direct-to-R2 flow at /api/upload/presign.
+ * Large videos use the presigned direct-to-storage flow at /api/upload/presign.
  */
 export const POST = route(async (req: NextRequest) => {
   const auth = await requireAuth(req);

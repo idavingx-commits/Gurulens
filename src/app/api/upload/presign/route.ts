@@ -19,7 +19,7 @@ const schema = z.object({
 });
 
 /**
- * Step 1 of the direct-to-R2 upload flow.
+ * Step 1 of the direct-to-storage upload flow.
  *
  * The browser uploads the file straight to R2 with a short-lived signed URL,
  * which keeps large videos under the Worker request-body limit (100 MB on

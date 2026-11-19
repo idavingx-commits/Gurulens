@@ -13,7 +13,7 @@ const schema = z.object({
 });
 
 /**
- * Step 2 of the direct-to-R2 flow: verify the object exists, re-check its size
+ * Step 2 of the direct-to-storage flow: verify the object exists, re-check its size
  * and magic bytes, then create the Media row.
  */
 export const POST = route(async (req: NextRequest) => {

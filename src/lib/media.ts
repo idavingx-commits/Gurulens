@@ -5,29 +5,55 @@ import { AwsClient } from "aws4fetch";
 import { UPLOAD_LIMITS, UPLOAD_MIME } from "@/lib/constants";
 
 /**
- * Media storage on Cloudflare R2 using the S3-compatible API.
+ * Media storage on an S3-compatible provider.
  *
- * Why the S3 API instead of the R2 binding?
+ * Neon Object Storage is the default when Neon's branch credentials are
+ * present (AWS_ENDPOINT_URL_S3 + AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY).
+ * Cloudflare R2 remains supported as a fallback.
+ *
+ * Why the S3 API instead of a binding?
  * - It works identically in local dev (Node) and on Workers.
  * - It lets us issue presigned PUT URLs so large videos bypass the Worker
  *   request-body limit (100 MB on Cloudflare).
  *
- * Required environment variables:
+ * Neon environment variables (pulled by `neon deploy`):
+ *   AWS_ENDPOINT_URL_S3, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_REGION
+ *   MEDIA_BUCKET (defaults to "assets", the bucket declared in neon.ts)
+ * R2 fallback:
  *   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
  * Optional:
  *   MEDIA_PUBLIC_URL (e.g. https://media.gurulens.us) for public delivery
  */
 
-type R2Config = {
+type StorageConfig = {
   client: AwsClient;
   bucket: string;
   endpoint: string;
 };
 
-let cachedConfig: R2Config | null | undefined;
+let cachedConfig: StorageConfig | null | undefined;
 
-export function r2Config(): R2Config | null {
+export function storageConfig(): StorageConfig | null {
   if (cachedConfig !== undefined) return cachedConfig;
+
+  const neonEndpoint = process.env.AWS_ENDPOINT_URL_S3?.trim();
+  const neonAccessKeyId = process.env.AWS_ACCESS_KEY_ID?.trim();
+  const neonSecretAccessKey = process.env.AWS_SECRET_ACCESS_KEY?.trim();
+  const neonBucket = process.env.MEDIA_BUCKET?.trim() || "assets";
+
+  if (neonEndpoint && neonAccessKeyId && neonSecretAccessKey && neonBucket) {
+    cachedConfig = {
+      client: new AwsClient({
+        accessKeyId: neonAccessKeyId,
+        secretAccessKey: neonSecretAccessKey,
+        service: "s3",
+        region: process.env.AWS_REGION?.trim() || "auto",
+      }),
+      bucket: neonBucket,
+      endpoint: neonEndpoint.replace(/\/+$/, ""),
+    };
+    return cachedConfig;
+  }
 
   const accountId = process.env.R2_ACCOUNT_ID?.trim();
   const accessKeyId = process.env.R2_ACCESS_KEY_ID?.trim();
@@ -54,14 +80,14 @@ export function r2Config(): R2Config | null {
 }
 
 export function mediaStorageReady(): boolean {
-  return r2Config() !== null;
+  return storageConfig() !== null;
 }
 
-function requireConfig(): R2Config {
-  const config = r2Config();
+function requireConfig(): StorageConfig {
+  const config = storageConfig();
   if (!config) {
     throw new Error(
-      "Media storage is not configured. Set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY and R2_BUCKET.",
+      "Media storage is not configured. Set Neon object-storage variables or R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY and R2_BUCKET.",
     );
   }
   return config;
@@ -222,12 +248,36 @@ export async function headObject(
 ): Promise<{ size: number; contentType: string | null } | null> {
   const config = requireConfig();
   const response = await config.client.fetch(objectUrl(key), { method: "HEAD" });
-  if (!response.ok) return null;
+  if (response.ok) {
+    const length = Number.parseInt(response.headers.get("content-length") ?? "0", 10);
+    return {
+      size: Number.isFinite(length) ? length : 0,
+      contentType: response.headers.get("content-type"),
+    };
+  }
 
-  const length = Number.parseInt(response.headers.get("content-length") ?? "0", 10);
+  // Some S3-compatible gateways reject HEAD for private objects even when the
+  // signature is valid. A one-byte ranged GET gives us the same metadata.
+  const probe = await config.client.fetch(objectUrl(key), {
+    method: "GET",
+    headers: { range: "bytes=0-0" },
+  });
+  if (!probe.ok) {
+    console.warn(`[media:head] HEAD ${response.status}, ranged GET ${probe.status}`);
+    return null;
+  }
+  await probe.arrayBuffer();
+
+  const contentRange = probe.headers.get("content-range") ?? "";
+  const total = Number.parseInt(contentRange.split("/")[1] ?? "0", 10);
+  const length = Number.parseInt(probe.headers.get("content-length") ?? "0", 10);
+  let size = length;
+  if (Number.isFinite(total) && total > 0) size = total;
+  if (!Number.isFinite(size)) size = 0;
+
   return {
-    size: Number.isFinite(length) ? length : 0,
-    contentType: response.headers.get("content-type"),
+    size,
+    contentType: probe.headers.get("content-type"),
   };
 }
 

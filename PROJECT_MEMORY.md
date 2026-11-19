@@ -12,18 +12,18 @@
 - **GuruLens** — Sri Lanka's education-first teacher discovery + social platform: teacher profiles, verification badges, honest reviews, posts, reels/videos, quizzes, admin/moderation console.
 - Company: **IneshDev (Pvt) Ltd**. Bilingual UI: **Sinhala + English**.
 - Product spec: `C:\Users\Iworld\Downloads\GuruLens_Concept_v2_Social_Platform_Sinhala.txt`
-- Local URL: `http://localhost:3000` (dev server currently running — see §4).
+- Production: **https://gurulens.us** (apex canonical; `www` 308-redirects to apex). Local URL: `http://localhost:3000`.
 
 ## 2. Stack & structure
 
 - **Next.js 16.4.6 (App Router)** — BREAKING CHANGES vs training data. Read `node_modules/next/dist/docs/` before writing code (also enforced by the auto-managed block in `AGENTS.md`). OpenNext requires Next ≥ 16.4.5.
 - React 19, TypeScript (strict), Tailwind v4 (configured via `@theme` in `src/app/globals.css` — no tailwind.config).
-- DB: **Neon Postgres + Prisma driver adapter** → `prisma/schema.prisma` (`provider = "postgresql"`, `url = env("DATABASE_URL")` pooled, `directUrl = env("DIRECT_URL")`, `engineType = "client"`). Runtime client: `@prisma/adapter-pg` (`pg` + `pg-cloudflare`). **Schema changes need a migration in `prisma/migrations/`** — `npm run db:migrate` locally, `npm run db:migrate:deploy` to apply. Prisma CLI reads `.env` only (not `.env.local`). Seed `prisma/seed.ts` (local/dev only; never run against production data you care about).
-- Hosting: **Cloudflare Workers** via `@opennextjs/cloudflare` (`wrangler.jsonc`, `open-next.config.ts`); `npm run cf:build` / `cf:preview` / `cf:deploy`. GitHub → Workers Builds auto-deploy.
+- DB: **Neon Postgres + Prisma driver adapter** → `prisma/schema.prisma` (`provider = "postgresql"`, `url = env("DATABASE_URL")` pooled, `directUrl = env("DIRECT_URL")`, `engineType = "client"`). Runtime client: `src/lib/db.ts` uses a hybrid `@prisma/adapter-neon` transport (`src/lib/db-adapter.ts`): ordinary queries go over Neon's stateless **HTTP** driver, while each transaction opens a short-lived **WebSocket** pool that is closed on commit/rollback. This matters because Cloudflare Workers forbid carrying an I/O object (such as a WebSocket) from one request into another, so a module-level WebSocket pool is not safe. The module-level Prisma client is safe now because no socket survives the request that created it. Neon project **`cold-haze-56644745`**, branch **production** (`br-wandering-block-a1zcxtyt`), database **`neondb`**; `neon.ts` declares services. `neon deploy` pulls `DATABASE_URL` + `DATABASE_URL_UNPOOLED`; `DIRECT_URL` must equal the unpooled URL. **Schema changes need a migration in `prisma/migrations/`** — `npm run db:migrate` locally, `npm run db:migrate:deploy` to apply. Prisma CLI reads `.env` only (not `.env.local`). Seed `prisma/seed.ts` creates reference data + admin/moderator only by default; demo teachers/students are opt-in with `SEED_DEMO_DATA=true`.
+- Hosting: **Cloudflare Workers** via `@opennextjs/cloudflare` (`wrangler.jsonc`, `open-next.config.ts`); `npm run cf:build` / `cf:preview` / `cf:deploy`. Production is deployed from this machine with `npx wrangler deploy` (the Workers Builds API currently returns 403, so GitHub auto-deploy is not wired). A separate tiny Worker `gurulens-www` (`workers/www-redirect/`) owns the `www.gurulens.us/*` route and 308-redirects to the apex; `gurulens.us` is a Worker custom domain.
 - Search uses `contains` + `mode: "insensitive"` (Postgres is case-sensitive, unlike SQLite).
 - Tests: Vitest, config `vitest.config.ts` (node env, `@` → `src` alias), suites in `tests/` (ranking, format, totp, rate-limit, validation, media — 60 tests).
 - Auth: DB-backed sessions (httpOnly `gl_session`) + CSRF double-submit (`gl_csrf` cookie ↔ `x-csrf-token` header via `src/lib/client.ts`).
-- Media: **Cloudflare R2** via the S3 API (`aws4fetch`) in `src/lib/media.ts`, served through `/api/media/[id]`. Public files 302-redirect to `MEDIA_PUBLIC_URL`; private docs require auth. Large videos use presigned direct-to-R2 uploads (`/api/upload/presign` + `/api/upload/complete`).
+- Media: **Neon Object Storage** (S3-compatible, bucket `assets`, private) via `aws4fetch` in `src/lib/media.ts`, served through `/api/media/[id]`. Cloudflare R2 remains a fallback when the Neon `AWS_*` variables are absent. Public files 302-redirect to `MEDIA_PUBLIC_URL` when set; otherwise they stream through the Worker. Private docs require auth. Large videos use presigned direct-to-storage uploads (`/api/upload/presign` + `/api/upload/complete`); Neon storage CORS accepts browser PUTs and unsigned reads return 403.
 
 Key dirs: `src/app/(site)` public pages, `src/app/(auth)` login/register, `src/app/(studio)` teacher studio, `src/app/(admin)` console, `src/lib/*` (db, auth, api, rate-limit, ranking, audit, media, totp, format, validation, client, data), `src/components/*` (ui, layout, auth, teacher, post, moderation, admin, studio, legal).
 
@@ -51,19 +51,19 @@ Key dirs: `src/app/(site)` public pages, `src/app/(auth)` login/register, `src/a
 
 ## 5. Accounts, roles & admin access
 
-Credentials are **never stored in this repository**. `prisma/seed.ts` generates strong random passwords for the admin/moderator and demo accounts (or uses `SEED_ADMIN_PASSWORD` / `SEED_DEMO_PASSWORD` when provided) and prints them once to the terminal. Store them in a password manager.
+Credentials are **never stored in this repository**. `prisma/seed.ts` uses `SEED_ADMIN_PASSWORD` when provided, otherwise generates a strong random password and prints it once to the terminal. Demo teachers/students are **not** seeded by default; `SEED_DEMO_DATA=true` (plus `SEED_DEMO_PASSWORD`) is local-only opt-in.
 
 | Purpose | Email |
 |---|---|
 | Admin (bootstrap) | value of `SEED_ADMIN_EMAIL` (default `admin@gurulens.lk`) |
 | Moderator | `moderator@gurulens.lk` (same password as admin) |
-| Demo teacher | `anuradha-perera@teachers.gurulens.lk` |
-| Demo student | `kavindu.silva@students.gurulens.lk` |
+
+Production currently has exactly these two accounts and **zero teacher profiles**; there are no demo teachers or demo students on the live platform.
 
 - Roles: `student | teacher | moderator | admin`. Admin console `/admin` (moderator too); teacher studio `/studio`; students land on `/feed`.
 - **Promote any account**: `npx tsx scripts/set-role.ts <email> [role]` (default role `admin`). Verified 2026-10-18: admin login → `GET /admin` 200.
 - Dev DB test artifacts (safe to ignore/delete): `test.student.<ts>`, `browser.test.<ts>`, `final.check.<ts>` @example.com, earlier `smoke.*` users, enrollment codes `GL-SMOKE-*`. Passwords for these throwaway accounts are not recorded here.
-- Enrollment codes format: `GL-<handle6>-<1000+i>` e.g. `GL-ANURAD-1000` (demo teacher).
+- Enrollment codes format: `GL-<handle6>-<1000+i>` (created per teacher; only demo data uses the seed suffix).
 
 ## 6. Core systems — rules that bite
 
@@ -109,10 +109,23 @@ Credentials are **never stored in this repository**. `prisma/seed.ts` generates 
 
 ## 9. Changelog (newest first)
 
-### 2026-11-16 — Neon + Cloudflare Workers migration (in progress)
+### 2026-11-19 — Live on Neon + Cloudflare, demo data removed
+- Linked Neon project **`cold-haze-56644745`** (org `org-divine-base-49419417`, branch `production`, database `neondb`) with `neon init`; `neon deploy` provisioned the declared services and pulled 15 env vars. Object Storage bucket **`assets`** and Functions `hello` are deployed; Neon Auth, AI Gateway and Realtime are provisioned but **not wired** (the app keeps its own DB-backed auth and has no AI/realtime features).
+- Applied `0001_init` to the new DB and seeded it: **34 tables, 85 indexes, 40 FKs**, 22 subjects, 25 districts, 11 grades, 3 languages, 4 badges, **2 users (admin + moderator), 0 teacher profiles, 0 demo accounts**.
+- `prisma/seed.ts` now treats demo teachers/students/posts as opt-in (`SEED_DEMO_DATA=true`); the default path creates only reference data, badges and the admin/moderator. Production `.env` sets `SEED_DEMO_DATA=false`.
+- Runtime DB transport settled on a hybrid `@prisma/adapter-neon` client: **HTTP** for ordinary queries, a short-lived **WebSocket pool per transaction** (`src/lib/db-adapter.ts`). The earlier `React.cache` + module-level WebSocket pool produced `cross-request-pipeline` / "promise created by a request that has since ended" errors under load; HTTP has no socket to carry across requests. `pg`/`pg-cloudflare` TCP hangs on Workers, so it is not used by the app.
+- Media moved to **Neon Object Storage** (S3 API, bucket `assets`, private) with R2 still supported as a fallback in `src/lib/media.ts`. Presigned PUT + CORS verified from `https://gurulens.us`; unsigned GET returns 403; `/api/media/[id]` still enforces visibility.
+- Rotated Worker secrets (`DATABASE_URL`, `AWS_*`, `MEDIA_BUCKET`) and deployed version **`74c3a5bc-3e95-468d-adc4-a3833ced30ad`** to `gurulens.us` (OpenNext, 10.9 MB raw / 2.70 MB gzip).
+- Verification exposed two production-only defects, both fixed in final version **`77bb1aa5-4786-4d1b-a5cb-ea4b4cb06835`**: Neon rejects `HEAD` on private objects (replaced with a ranged-GET metadata fallback in `src/lib/media.ts`), and Cloudflare cancelled requests that reused a WebSocket-backed Prisma client across requests (replaced with the hybrid HTTP/WebSocket adapter in `src/lib/db-adapter.ts`).
+- Added `www.gurulens.us` → apex **308** redirect via a dedicated Worker `gurulens-www` and route `www.gurulens.us/*`; DNS was already proxied, so no DNS change was needed.
+- Live smoke test on the final version: **38/38 passed** — public routes, anonymous redirects, wrong-password 401, admin login + all five admin pages, student registration, dashboard/settings/explore/notifications/saved, avatar upload + fetch through Neon storage, re-login persistence, demo-name absence, DB assertions, cleanup. Presigned upload → PUT → complete → public fetch was re-verified separately, as were five home/explore rounds and three admin login/logout cycles.
+- Remaining platform risks: Workers **Free plan 10 ms CPU** is still tight headroom for bcrypt and heavy SSR, though the final hybrid transport did not reproduce the earlier `503`/`1102`; Workers Builds API `403`; zone DNS/settings API `403` (no DNS edits from CLI); R2 stays disabled and is no longer required.
+- Updated `README.md`, `docs/ENVIRONMENT.md`, `docs/DEPLOYMENT.md`, `docs/PROJECT_STATUS.md`; `neon.ts` and `workers/www-redirect/` added to the repo.
+
+### 2026-11-16 — Neon + Cloudflare Workers migration (superseded by 2026-11-19)
 - Prisma datasource switched from `NETLIFY_DB_URL` to `DATABASE_URL` (pooled) + `DIRECT_URL` (direct), generator set to `engineType = "client"` with `@prisma/adapter-pg`. Native Prisma engine removed so the client can run in Workers.
 - `src/lib/db.ts` is now a lazy proxy around a driver-adapter client; imports no longer require `DATABASE_URL` at build time.
-- Baseline migration generated at `prisma/migrations/0001_init` (33 tables, 51 indexes) + `migration_lock.toml`. Old `netlify/database/migrations/*.sql` are historical and are not applied to Neon.
+- Baseline migration generated at `prisma/migrations/0001_init` (final: 34 tables, 85 indexes) + `migration_lock.toml`. Old `netlify/database/migrations/*.sql` are historical and are not applied to Neon.
 - Media moved from Netlify Blobs to Cloudflare R2 (S3 API via `aws4fetch`). Public media 302-redirects to `MEDIA_PUBLIC_URL`; private docs stay behind the auth check. New presigned flow `/api/upload/presign` → browser PUT → `/api/upload/complete` keeps the 200 MB video limit despite the Workers 100 MB body limit.
 - Added `@opennextjs/cloudflare` + `wrangler.jsonc` + `open-next.config.ts`; `next` upgraded to 16.4.6 (OpenNext minimum 16.4.5). Scripts: `cf:build`, `cf:preview`, `cf:deploy`.
 - Sitemap is now `force-dynamic` so new teachers appear without a rebuild.

@@ -1,19 +1,22 @@
-import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
+
+import { neonAdapter } from "@/lib/db-adapter";
 
 /**
  * Prisma client for PostgreSQL (Neon).
  *
+ * A driver adapter is required because the native Prisma query engine cannot
+ * run inside Cloudflare Workers. `@/lib/db-adapter` uses Neon's stateless HTTP
+ * driver for ordinary queries and a short-lived WebSocket only for
+ * transactions, so this module-level client never carries an I/O object from
+ * one Worker request into another. (Cloudflare rejects cross-request I/O; a
+ * WebSocket pool cached at module scope is not safe here.)
+ *
  * The client is created lazily so that importing a module that touches the
  * database does not require DATABASE_URL at build time (Next.js may evaluate
  * modules during `next build`). At runtime the connection string is read from
- * the Worker secret / local .env.local.
- *
- * A driver adapter (`@prisma/adapter-pg`) is required because the native Prisma
- * query engine cannot run inside Cloudflare Workers.
+ * the Worker secret / local `.env.local`.
  */
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
-
 function createPrismaClient(): PrismaClient {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) {
@@ -22,19 +25,17 @@ function createPrismaClient(): PrismaClient {
     );
   }
 
-  const adapter = new PrismaPg({ connectionString });
-
   return new PrismaClient({
-    adapter,
+    adapter: neonAdapter(connectionString),
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   });
 }
 
+let client: PrismaClient | undefined;
+
 function getPrismaClient(): PrismaClient {
-  if (!globalForPrisma.prisma) {
-    globalForPrisma.prisma = createPrismaClient();
-  }
-  return globalForPrisma.prisma;
+  if (!client) client = createPrismaClient();
+  return client;
 }
 
 /**
@@ -43,11 +44,11 @@ function getPrismaClient(): PrismaClient {
  */
 export const db = new Proxy({} as PrismaClient, {
   get(_target, property) {
-    const client = getPrismaClient();
-    const value = Reflect.get(client, property);
+    const prisma = getPrismaClient();
+    const value = Reflect.get(prisma, property);
 
     if (typeof value === "function") {
-      return value.bind(client);
+      return value.bind(prisma);
     }
 
     return value;

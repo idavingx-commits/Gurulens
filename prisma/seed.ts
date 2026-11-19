@@ -5,10 +5,19 @@ import { randomBytes } from "node:crypto";
 import { existsSync } from "node:fs";
 import path from "node:path";
 
-const connectionString = process.env.DATABASE_URL;
+const connectionString = process.env.DIRECT_URL ?? process.env.DATABASE_URL;
 if (!connectionString) {
-  throw new Error("DATABASE_URL is required to run the seed script.");
+  throw new Error("DIRECT_URL or DATABASE_URL is required to run the seed script.");
 }
+
+/**
+ * Demo teachers/students/posts are useful locally but must not appear on the
+ * production platform. They are opt-in: set SEED_DEMO_DATA=true to create them.
+ * The default seeds only reference data, badges and the bootstrap
+ * admin/moderator accounts.
+ */
+const seedDemoData =
+  (process.env.SEED_DEMO_DATA ?? "false").trim().toLowerCase() === "true";
 
 const db = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 
@@ -227,6 +236,13 @@ async function main() {
   await db.user.create({
     data: { email: "moderator@gurulens.lk", passwordHash: adminHash, role: "moderator", name: "GuruLens Moderator", ageEligible: true, emailVerified: true },
   });
+
+  if (!seedDemoData) {
+    console.log("Skipped demo teachers, students and content (SEED_DEMO_DATA=false).");
+    console.log("Seed complete.");
+    console.log(`Admin:          ${adminEmail}`);
+    return;
+  }
 
   const demoSecret = resolveSeedPassword("SEED_DEMO_PASSWORD");
   const demoPassword = demoSecret.value;

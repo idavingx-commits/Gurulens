@@ -1,0 +1,13 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "gurulens-www",
+  "main": "index.js",
+  "compatibility_date": "2026-11-13",
+  "workers_dev": false,
+  "routes": [
+    {
+      "pattern": "www.gurulens.us/*",
+      "zone_name": "gurulens.us"
+    }
+  ]
+}

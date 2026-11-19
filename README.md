@@ -187,11 +187,11 @@
   <img src="https://img.shields.io/badge/Prisma-PostgreSQL-24527B?style=for-the-badge&amp;logo=prisma&amp;logoColor=white" alt="Prisma PostgreSQL" />
   <img src="https://img.shields.io/badge/Hosting-Cloudflare%20Workers-F38020?style=for-the-badge&amp;logo=cloudflare&amp;logoColor=white" alt="Cloudflare Workers" />
   <img src="https://img.shields.io/badge/Database-Neon-00E599?style=for-the-badge&amp;logo=postgresql&amp;logoColor=white" alt="Neon PostgreSQL" />
-  <img src="https://img.shields.io/badge/Media-Cloudflare%20R2-F38020?style=for-the-badge&amp;logo=cloudflare&amp;logoColor=white" alt="Cloudflare R2" />
+  <img src="https://img.shields.io/badge/Media-Neon%20Object%20Storage-00E599?style=for-the-badge&amp;logo=neon&amp;logoColor=white" alt="Neon Object Storage" />
 
 </div>
 
-The application uses **Next.js (App Router), React, TypeScript, Tailwind CSS, Prisma and PostgreSQL on Neon**, deployed to **Cloudflare Workers** through the OpenNext adapter, with **Cloudflare R2** for media. GitHub hosts the source history and project documentation.
+The application uses **Next.js (App Router), React, TypeScript, Tailwind CSS, Prisma and PostgreSQL on Neon**, deployed to **Cloudflare Workers** through the OpenNext adapter, with **Neon Object Storage** for media. Live at **[gurulens.us](https://gurulens.us)**. GitHub hosts the source history and project documentation.
 
 **සටහන:** Source code GitHub හි තිබීමෙන් පමණක් project එක open-source බවට පත් නොවේ. මෙම repository එකේ භාවිතය සහ අයිතිය සඳහා පහත **Source & usage** කොටස බලන්න.
 
@@ -199,7 +199,7 @@ The application uses **Next.js (App Router), React, TypeScript, Tailwind CSS, Pr
 <summary><strong>🛠️ Developer quick start (authorized team only)</strong></summary>
 <br />
 
-Prerequisites: Node.js 20+, npm, and your own authorized environment configuration (Neon database, Cloudflare R2). See **[docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)**.
+Prerequisites: Node.js 20+, npm, and your own authorized environment configuration (Neon database and object storage). See **[docs/ENVIRONMENT.md](docs/ENVIRONMENT.md)**.
 
 ```bash
 # Clone only if you have authorization to access and use the project
@@ -208,9 +208,9 @@ git clone https://github.com/idavingx-commits/Gurulens.git
 cd Gurulens
 npm ci
 
-cp .env.example .env          # fill in Neon + R2 values
+cp .env.example .env          # fill in Neon values (or run: neon deploy)
 npm run db:migrate:deploy     # apply the baseline schema to Neon
-npm run db:seed               # reference data, admin, demo accounts
+npm run db:seed               # reference data + admin/moderator (no demo accounts)
 
 npm run dev
 ```
@@ -228,7 +228,7 @@ npm run cf:build       # OpenNext build for Cloudflare Workers
 Deployment steps, custom domains and verification checklist: **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)**.
 Current implementation state: **[docs/PROJECT_STATUS.md](docs/PROJECT_STATUS.md)**.
 
-> Never commit `.env` files, passwords, access tokens, personally identifying user records, private teacher submissions or real credentials. Preview and production databases must be handled separately. The seed script generates admin/demo passwords at runtime — they are never stored in this repository.
+> Never commit `.env` files, passwords, access tokens, personally identifying user records, private teacher submissions or real credentials. Preview and production databases must be handled separately. The seed script creates only the admin/moderator by default and generates their password at runtime when one is not supplied — demo teachers/students are opt-in (`SEED_DEMO_DATA=true`) and are not used in production.
 
 </details>
 

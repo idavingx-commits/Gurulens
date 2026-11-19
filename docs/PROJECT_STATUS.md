@@ -1,76 +1,102 @@
 # Project Status
 
-Last updated: 2026-11-16
+Last updated: 2026-11-19
 
-## Release target
+## Live release
 
-Move the **existing** GuruLens application to:
+- **URL:** https://gurulens.us (apex canonical)
+- **`www`:** 308-redirects to the apex, preserving path/query
+- **Branch:** `feat/cloudflare-neon`
+- **Worker:** `gurulens`, version `77bb1aa5-4786-4d1b-a5cb-ea4b4cb06835`
+- **Hosting:** Cloudflare Workers via `@opennextjs/cloudflare`
+- **Database:** Neon Postgres, project `cold-haze-56644745`, branch `production`, database `neondb`
+- **Media:** Neon Object Storage, private bucket `assets` (S3 API + presigned uploads)
+- **Redirect Worker:** `gurulens-www` (`workers/www-redirect/`)
 
-- **Cloudflare Workers** (OpenNext adapter, GitHub automatic deployment)
-- **Neon PostgreSQL** (fresh database, schema only)
-- **Cloudflare R2** (media, including large video uploads)
-- Custom domains `gurulens.us` and `www.gurulens.us`
+The old Netlify site, database and blob files are untouched. Nothing was
+deleted from Netlify.
 
-The old Netlify database and media are left untouched. No production data was
-deleted or copied.
+## Current data
 
-## Existing features (preserved)
+| Item | Count |
+|---|---:|
+| Public tables | 34 |
+| Indexes | 85 |
+| Foreign keys | 40 |
+| Users | 2 (1 admin, 1 moderator) |
+| Teacher profiles | **0** |
+| Demo teachers / students | **0** |
+| Sessions / media rows after cleanup | 0 / 0 |
+| Subjects / districts / grades / languages | 22 / 25 / 11 / 3 |
+| Badges | 4 |
 
-- Teacher discovery, filters, search
-- Teacher profiles, reviews with enrollment-code eligibility, verification + badges
-- Posts, comments, reactions, saves, feed
-- Reels (vertical viewer, autoplay, progress, keyboard navigation)
-- Quizzes (questions, attempts, results)
-- Reports and moderation, admin users/verification/reports
-- Notifications, audit logs
-- Membership tiers
-- Sessions, CSRF, TOTP MFA, rate limiting
-- SEO: metadata, canonicals, structured data, robots, sitemap
+The production seed creates reference data, badges and the bootstrap
+admin/moderator only. Demo teachers, students, posts and reviews are opt-in
+with `SEED_DEMO_DATA=true` and are **not** present on the live platform.
 
-These are unchanged in behaviour. Storage and database plumbing were swapped.
+## Verified live (2026-11-19)
 
-## Implemented in this release
-
-| Area | Change |
-|---|---|
-| Database | Prisma datasource now `DATABASE_URL` + `DIRECT_URL` (Neon); native engine removed (`engineType = "client"`) |
-| DB client | `@prisma/adapter-pg` driver adapter; lazy client so builds don't need a live DB |
-| Migrations | Baseline `prisma/migrations/0001_init` generated from the schema (33 tables, 51 indexes) |
-| Hosting | `@opennextjs/cloudflare` + `wrangler.jsonc` + `open-next.config.ts` |
-| Next.js | Upgraded 16.4.2 → 16.4.6 (OpenNext minimum is 16.4.5) |
-| Media | Netlify Blobs replaced with R2 via the S3 API (`aws4fetch`) |
-| Large uploads | Presigned direct-to-R2 flow (`/api/upload/presign`, `/api/upload/complete`); 200 MB product limit kept |
-| Media delivery | Public media 302-redirects to `media.gurulens.us`; private documents stay behind the auth check |
-| Sitemap | Now dynamic so new teachers appear without a rebuild |
-| Secrets | Hardcoded admin/demo passwords removed from the seed and `PROJECT_MEMORY.md`; generated once at seed time |
-| Docs | `docs/ENVIRONMENT.md`, `docs/DEPLOYMENT.md`, `.env.example` |
-
-## Verified
+A 38-check smoke test ran against `https://gurulens.us` and the new database:
 
 | Check | Result |
 |---|---|
-| `npm run typecheck` | Pass |
-| `npm run lint` | Pass |
-| `npm test` | Pass — 6 suites / 60 tests |
-| `npm run build` (Next.js) | Pass |
-| `npm run cf:build` (OpenNext) | Pass (local Windows symlink workaround in `node_modules` only) |
-| `wrangler deploy --dry-run` | Pass — Worker 10.7 MB raw / **2.65 MB gzip** |
-| Prisma schema validation | Pass |
-| Baseline migration generation | Pass — 33 CREATE TABLE, 51 indexes |
+| Public routes (`/`, `/login`, `/register`, registration pages, `/explore`, `/about`, sitemap, robots) | 9/9 `200` |
+| Anonymous protected routes redirect to `/login?next=...` | 5/5 `307` |
+| Wrong password | `401` |
+| Admin login + `/admin`, `/admin/verification`, `/admin/users`, `/admin/badges`, `/admin/reports` | 6/6 `200` |
+| Student registration + dashboard/settings/explore/notifications/saved | 6/6 `200` |
+| Avatar upload to Neon storage + `/api/media/<id>` | `200 image/png` |
+| Session persistence after logout/re-login | Pass |
+| No seeded demo teacher names on `/explore` | Pass |
+| DB assertions (test user/media present, 0 teachers, 1 admin) | Pass |
+| Smoke user + storage object cleanup | Pass |
+| `www` → apex redirect (path + query preserved) | `308` |
+| Presigned PUT from browser origin / unsigned read | `200` / `403` |
 
-## Not verified
+Build checks also passed: `npx tsc --noEmit`, `npm run build`,
+`npm run cf:build`, and `wrangler deploy`. A final stress run of five home /
+explore pairs and three admin login → `/admin` → logout cycles returned
+`200` throughout (home 247–385 ms, login 345–360 ms). The presigned
+upload/complete/fetch flow was re-verified against the final Worker version
+(`77bb1aa5`).
 
-- Neon connection, migration apply and seed — **blocked until `.env` contains the real connection strings**
-- Login/registration against the real database
-- R2 upload/download round-trip — blocked until R2 credentials and bucket exist
-- Cloudflare deployment — no Cloudflare account access from this environment
-- Custom domain and DNS cutover
-- End-to-end permissions matrix against live data
+## Remaining blockers and risks
+
+1. **Workers Free plan CPU limit (10 ms).** Earlier WebSocket-backed runs
+   intermittently returned `503` / `error code: 1102` and hung requests. The
+   final hybrid HTTP/WebSocket transport removed the cross-request I/O errors,
+   and the final 38-check smoke, presign flow, and stress run all passed. The
+   10 ms ceiling is still a headroom risk for bcrypt and heavy SSR; Workers
+   Paid ($5/month) is recommended. Do not lower bcrypt rounds.
+2. **Cloudflare Workers Builds API returns `403 Authentication error`.**
+   Production is deployed from this machine with `npx wrangler deploy`; GitHub
+   auto-deploy is not wired.
+3. **Zone DNS/settings API returns `403`.** DNS records cannot be read or
+   changed from the CLI. `www` is handled with a Worker route, so no DNS change
+   is needed; future DNS work must be done in the dashboard.
+4. **AI Gateway has no model credits.** It is provisioned but no app feature
+   calls it.
+5. **R2 is not enabled** (`code: 10042`). It is no longer required because media
+   uses Neon Object Storage; the R2 code path remains as a fallback.
+
+## Neon services
+
+`neon.ts` declares Postgres, Auth, AI Gateway, Object Storage, Functions and
+Realtime, and `neon deploy` applied them. Only Postgres and Object Storage are
+used by the app today:
+
+- **Postgres** — all application data.
+- **Object Storage** — private bucket `assets`, presigned uploads, media proxy.
+- **Auth** — provisioned but **not wired**; GuruLens keeps its existing
+  DB-backed sessions, CSRF and bcrypt auth.
+- **AI Gateway** — provisioned but unused (no AI features, no credits).
+- **Realtime** — provisioned but unused (no live-query features).
+- **Functions** — `hello` health-check function deployed; the Next.js app runs
+  on the Worker.
 
 ## Not implemented (future milestones)
 
-These modules do not exist in the codebase yet. They were listed in the wider
-roadmap and must not be described as shipped:
+These do not exist in the codebase and must not be described as shipped:
 
 - Workspaces / multi-role memberships (school teacher, institute owner, parent, principal)
 - GuruLens Channels (3-free-channel quota, voice messages, polls, channel verification)
@@ -81,16 +107,9 @@ roadmap and must not be described as shipped:
 - Expanded admin RBAC
 - Tamil localisation (architecture only)
 
-## Blockers
-
-1. **Neon credentials** must be placed in `.env` locally and in Workers secrets.
-2. **Cloudflare account access** is required to create the Worker, R2 bucket and domains.
-3. **Registrar / nameserver access** is required for `gurulens.us` if the zone is not already on Cloudflare.
-4. **Workers Free CPU limit** (10 ms) likely breaks bcrypt-backed auth routes. Test the deployed app; if it fails, Workers Paid ($5/month) is required.
-
 ## Honest summary
 
-The repository is production-buildable for Cloudflare Workers and the schema is
-ready for Neon. Nothing has been deployed, and no database has been created or
-seeded yet. Claims about a live deployment should wait until the checklist in
-`docs/DEPLOYMENT.md` passes.
+GuruLens is deployed and functional at `https://gurulens.us` on the new Neon
+database, with demo teachers removed and uploads working through Neon Object
+Storage. The remaining reliability issue is the Workers Free plan CPU ceiling,
+not application code or database connectivity.
