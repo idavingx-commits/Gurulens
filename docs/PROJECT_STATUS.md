@@ -6,7 +6,7 @@ Last updated: 2026-11-19
 
 - **URL:** https://gurulens.us (apex canonical)
 - **`www`:** 308-redirects to the apex, preserving path/query
-- **Branch:** `feat/cloudflare-neon`
+- **Branch:** `feat/cloudflare-neon` (deployed from commit `74f42ba`; not merged to `main`)
 - **Worker:** `gurulens`, version `77bb1aa5-4786-4d1b-a5cb-ea4b4cb06835`
 - **Hosting:** Cloudflare Workers via `@opennextjs/cloudflare`
 - **Database:** Neon Postgres, project `cold-haze-56644745`, branch `production`, database `neondb`

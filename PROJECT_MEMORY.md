@@ -120,7 +120,7 @@ Production currently has exactly these two accounts and **zero teacher profiles*
 - Added `www.gurulens.us` → apex **308** redirect via a dedicated Worker `gurulens-www` and route `www.gurulens.us/*`; DNS was already proxied, so no DNS change was needed.
 - Live smoke test on the final version: **38/38 passed** — public routes, anonymous redirects, wrong-password 401, admin login + all five admin pages, student registration, dashboard/settings/explore/notifications/saved, avatar upload + fetch through Neon storage, re-login persistence, demo-name absence, DB assertions, cleanup. Presigned upload → PUT → complete → public fetch was re-verified separately, as were five home/explore rounds and three admin login/logout cycles.
 - Remaining platform risks: Workers **Free plan 10 ms CPU** is still tight headroom for bcrypt and heavy SSR, though the final hybrid transport did not reproduce the earlier `503`/`1102`; Workers Builds API `403`; zone DNS/settings API `403` (no DNS edits from CLI); R2 stays disabled and is no longer required.
-- Updated `README.md`, `docs/ENVIRONMENT.md`, `docs/DEPLOYMENT.md`, `docs/PROJECT_STATUS.md`; `neon.ts` and `workers/www-redirect/` added to the repo.
+- Updated `README.md`, `docs/ENVIRONMENT.md`, `docs/DEPLOYMENT.md`, `docs/PROJECT_STATUS.md`; `neon.ts` and `workers/www-redirect/` added to the repo. Deployed from commit **`74f42ba`** on branch **`feat/cloudflare-neon`**; `main` was not merged.
 
 ### 2026-11-16 — Neon + Cloudflare Workers migration (superseded by 2026-11-19)
 - Prisma datasource switched from `NETLIFY_DB_URL` to `DATABASE_URL` (pooled) + `DIRECT_URL` (direct), generator set to `engineType = "client"` with `@prisma/adapter-pg`. Native Prisma engine removed so the client can run in Workers.
