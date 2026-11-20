@@ -1,18 +1,25 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Icon } from "@/components/ui/icons";
+import { useState } from "react";
 
-export function CreateChannelForm({ userId }: { userId: string }) {
+import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icons";
+import { Field, Input, Select, Textarea } from "@/components/ui/input";
+import { InfoNote } from "@/components/ui/primitives";
+import { apiFetch, ClientApiError } from "@/lib/client";
+
+export function CreateChannelForm() {
   const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
+  const [description, setDescription] = useState("");
+  const [visibility, setVisibility] = useState("public");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
 
   function handleNameChange(value: string) {
+    setName(value);
     const autoSlug = value
       .toLowerCase()
       .replace(/[^a-z0-9\s-]/g, "")
@@ -22,129 +29,106 @@ export function CreateChannelForm({ userId }: { userId: string }) {
     setSlug(autoSlug);
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (pending) return;
     setError(null);
-    setIsSubmitting(true);
 
-    const formData = new FormData(e.currentTarget);
-    const data = {
-      name: formData.get("name") as string,
-      slug: formData.get("slug") as string,
-      description: formData.get("description") as string,
-      visibility: formData.get("visibility") as string,
-    };
+    if (!name.trim()) return setError("Please enter a channel name.");
+    if (!slug.trim() || slug.length < 3) return setError("Channel URL must be at least 3 characters.");
+    if (!/^[a-z0-9-]+$/.test(slug)) return setError("Channel URL can only contain lowercase letters, numbers, and hyphens.");
 
+    setPending(true);
     try {
-      const res = await fetch("/api/channels", {
+      const result = await apiFetch<{ channel: { slug: string } }>("/api/channels", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: { name, slug, description, visibility },
       });
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        throw new Error(result.error || "Failed to create channel");
-      }
-
       router.push(`/channel/${result.channel.slug}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create channel");
+      if (err instanceof ClientApiError) {
+        setError(err.message);
+      } else {
+        setError("Something went wrong. Please try again.");
+      }
     } finally {
-      setIsSubmitting(false);
+      setPending(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 rounded-xl border bg-white p-6 shadow-sm">
-      {error && (
-        <div className="rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700">
+    <form onSubmit={submit} className="space-y-5">
+      {error ? (
+        <InfoNote icon="alert" tone="danger">
           {error}
-        </div>
-      )}
+        </InfoNote>
+      ) : null}
 
-      <div>
-        <label htmlFor="name" className="mb-1 block text-sm font-medium text-ink-700">
-          Channel Name *
-        </label>
+      <Field label="Channel name" htmlFor="name" hint="The name of your channel as it will appear to followers">
         <Input
           id="name"
           name="name"
-          required
-          placeholder="e.g., Chemistry Made Easy"
+          value={name}
           onChange={(e) => handleNameChange(e.target.value)}
+          placeholder="e.g., Chemistry Made Easy"
+          required
         />
-        <p className="mt-1 text-xs text-ink-500">
-          The name of your channel as it will appear to followers
-        </p>
-      </div>
+      </Field>
 
-      <div>
-        <label htmlFor="slug" className="mb-1 block text-sm font-medium text-ink-700">
-          Channel URL *
-        </label>
-        <div className="flex items-center">
-          <span className="mr-1 text-sm text-ink-500">gurulens.us/channel/</span>
+      <Field label="Channel URL" htmlFor="slug" hint="Lowercase letters, numbers, and hyphens only">
+        <div className="flex items-center gap-2">
+          <span className="flex-none rounded-lg bg-ink-100 px-3 py-2.5 text-sm text-ink-500">
+            gurulens.us/channel/
+          </span>
           <Input
             id="slug"
             name="slug"
-            required
             value={slug}
-            onChange={(e) => setSlug(e.target.value)}
+            onChange={(e) => setSlug(e.target.value.toLowerCase())}
             placeholder="chemistry-made-easy"
             pattern="^[a-z0-9-]+$"
+            required
+            className="flex-1"
           />
         </div>
-        <p className="mt-1 text-xs text-ink-500">
-          Lowercase letters, numbers, and hyphens only
-        </p>
-      </div>
+      </Field>
 
-      <div>
-        <label htmlFor="description" className="mb-1 block text-sm font-medium text-ink-700">
-          Description
-        </label>
-        <textarea
+      <Field label="Description" htmlFor="description" hint="Tell potential followers what they can expect">
+        <Textarea
           id="description"
           name="description"
-          rows={4}
-          className="w-full rounded-lg border border-ink-200 p-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
           placeholder="What is your channel about?"
+          rows={4}
         />
-        <p className="mt-1 text-xs text-ink-500">
-          Tell potential followers what they can expect
-        </p>
-      </div>
+      </Field>
 
-      <div>
-        <label htmlFor="visibility" className="mb-1 block text-sm font-medium text-ink-700">
-          Visibility *
-        </label>
-        <select
+      <Field label="Visibility" htmlFor="visibility">
+        <Select
           id="visibility"
           name="visibility"
-          required
-          defaultValue="public"
-          className="w-full rounded-lg border border-ink-200 p-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+          value={visibility}
+          onChange={(e) => setVisibility(e.target.value)}
         >
-          <option value="public">Public - Anyone can find and follow</option>
-          <option value="private">Private - Only approved followers can see</option>
-          <option value="members">Members Only - Only class members can access</option>
-        </select>
-      </div>
+          <option value="public">Public — Anyone can find and follow</option>
+          <option value="private">Private — Only approved followers can see</option>
+          <option value="members">Members Only — Only class members can access</option>
+        </Select>
+      </Field>
 
-      <div className="flex gap-4">
-        <Button type="submit" disabled={isSubmitting} className="flex-1">
-          {isSubmitting && <Icon name="loader" size={16} className="animate-spin" />}
-          Create Channel
+      <div className="flex gap-3 pt-3">
+        <Button type="submit" disabled={pending} className="flex-1">
+          {pending ? (
+            <>
+              <Icon name="loader" size={18} className="animate-spin" />
+              Creating…
+            </>
+          ) : (
+            "Create Channel"
+          )}
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.back()}
-          disabled={isSubmitting}
-        >
+        <Button type="button" variant="outline" onClick={() => router.back()} disabled={pending}>
           Cancel
         </Button>
       </div>

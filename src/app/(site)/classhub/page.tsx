@@ -1,54 +1,21 @@
-/**
- * ClassHub Dashboard
- * Teacher's class management dashboard
- */
-
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
+
+import { LinkButton } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icons";
+import { EmptyState, SectionHeader, Stat } from "@/components/ui/primitives";
 import { getAuth } from "@/lib/auth";
 import { getTeacherDashboard, getTeacherClasses } from "@/lib/classhub";
-import { Button, LinkButton } from "@/components/ui/button";
-import { Icon } from "@/components/ui/icons";
-import { cn } from "@/lib/format";
+import { timeAgo } from "@/lib/format";
 
-export const metadata = {
-  title: "ClassHub | GuruLens",
-  description: "Manage your classes, students, and attendance",
-};
-
-function StatCard({
-  title,
-  value,
-  subtitle,
-  icon,
-}: {
-  title: string;
-  value: string | number;
-  subtitle: string;
-  icon: string;
-}) {
-  return (
-    <div className="rounded-xl border bg-white p-5 shadow-sm">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-ink-500">{title}</span>
-        <Icon name={icon} size={18} className="text-ink-400" />
-      </div>
-      <div className="mt-2 text-2xl font-bold text-ink-900">{value}</div>
-      <p className="text-xs text-ink-400">{subtitle}</p>
-    </div>
-  );
-}
+export const metadata: Metadata = { title: "ClassHub" };
 
 export default async function ClassHubPage() {
   const auth = await getAuth();
 
-  if (!auth) {
-    redirect("/login?redirect=/classhub");
-  }
-
-  if (auth.user.role !== "teacher" && auth.user.role !== "admin") {
-    redirect("/?error=teacher_only");
-  }
+  if (!auth) redirect("/login?redirect=/classhub");
+  if (auth.user.role !== "teacher" && auth.user.role !== "admin") redirect("/");
 
   const [dashboard, classes] = await Promise.all([
     getTeacherDashboard(auth.user.id),
@@ -56,164 +23,136 @@ export default async function ClassHubPage() {
   ]);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
+    <div className="mx-auto w-full max-w-4xl px-4 pt-8 pb-12 sm:px-6">
       {/* Header */}
-      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-ink-900">ClassHub</h1>
-          <p className="text-ink-500">
-            Manage your classes, track attendance, and monitor student progress
+          <h1 className="text-2xl font-extrabold tracking-tight text-ink-900">ClassHub</h1>
+          <p className="mt-1 text-[13px] text-ink-500">
+            Manage your classes, track attendance, and monitor students.
           </p>
         </div>
         <LinkButton href="/classhub/create">
-          <Icon name="plus" size={16} />
-          Create Class
+          <Icon name="plus" size={18} /> Create Class
         </LinkButton>
       </div>
 
-      {/* Stats Cards */}
-      <div className="mb-8 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          title="Total Classes"
-          value={dashboard.classes}
-          subtitle="Active classes"
-          icon="book-open"
-        />
-        <StatCard
-          title="Total Students"
-          value={dashboard.totalStudents}
-          subtitle="Enrolled students"
-          icon="users"
-        />
-        <StatCard
-          title="Upcoming Sessions"
-          value={dashboard.upcomingSessions.length}
-          subtitle="This week"
-          icon="calendar"
-        />
-        <StatCard
-          title="Pending Reviews"
+      {/* Stats */}
+      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat label="Classes" value={dashboard.classes} icon="book-open" />
+        <Stat label="Students" value={dashboard.totalStudents} icon="users" />
+        <Stat label="Upcoming" value={dashboard.upcomingSessions.length} icon="calendar" />
+        <Stat
+          label="Pending"
           value={dashboard.pendingSubmissions}
-          subtitle="Submissions to grade"
-          icon="clipboard-check"
+          icon="clipboard"
+          tone={dashboard.pendingSubmissions > 5 ? "warn" : "default"}
+          hint="submissions to grade"
         />
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Classes List */}
-        <div className="lg:col-span-2">
-          <div className="rounded-xl border bg-white shadow-sm">
-            <div className="flex items-center justify-between border-b p-4">
-              <h2 className="font-semibold text-ink-900">Your Classes</h2>
-              <Link href="/classhub/classes" className="text-sm font-medium text-brand-600 hover:underline">
-                View All
+      {/* Classes */}
+      <section className="mb-8">
+        <SectionHeader
+          title="Your Classes"
+          action={
+            classes.length > 5 ? (
+              <Link href="/classhub/classes" className="text-sm font-bold text-brand-600 hover:underline">
+                View all
               </Link>
-            </div>
-            <div className="p-4">
-              {classes.length === 0 ? (
-                <div className="py-8 text-center">
-                  <Icon name="book-open" size={48} className="mx-auto mb-4 text-ink-300" />
-                  <p className="mb-4 text-ink-500">You haven't created any classes yet.</p>
-                  <LinkButton href="/classhub/create">Create Your First Class</LinkButton>
+            ) : undefined
+          }
+        />
+        {classes.length === 0 ? (
+          <EmptyState
+            icon="book-open"
+            title="No classes yet"
+            description="Create your first class to get started"
+            action={<LinkButton href="/classhub/create">Create Class</LinkButton>}
+          />
+        ) : (
+          <div className="space-y-3">
+            {classes.slice(0, 5).map((cls) => (
+              <Link key={cls.id} href={`/classhub/class/${cls.id}`} className="card flex items-center justify-between p-4 transition-shadow hover:shadow-md">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-ink-900">{cls.name}</span>
+                    <span className="rounded bg-ink-100 px-2 py-0.5 text-xs font-medium text-ink-600">{cls.mode}</span>
+                  </div>
+                  <div className="mt-1 flex items-center gap-3 text-xs text-ink-500">
+                    <span className="flex items-center gap-1">
+                      <Icon name="users" size={12} /> {cls._count.enrollments} students
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Icon name="calendar" size={12} /> {cls._count.sessions} sessions
+                    </span>
+                  </div>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {classes.slice(0, 5).map((cls) => (
-                    <Link key={cls.id} href={`/classhub/class/${cls.id}`}>
-                      <div className="flex items-center justify-between rounded-lg border bg-white p-4 transition-colors hover:bg-ink-50">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-medium text-ink-900">{cls.name}</h3>
-                            <span className="rounded bg-ink-100 px-2 py-0.5 text-xs text-ink-600">
-                              {cls.mode}
-                            </span>
-                          </div>
-                          <div className="mt-1 flex items-center gap-4 text-sm text-ink-500">
-                            <span className="flex items-center gap-1">
-                              <Icon name="users" size={14} />
-                              {cls._count.enrollments} students
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Icon name="calendar" size={14} />
-                              {cls._count.sessions} sessions
-                            </span>
-                          </div>
-                        </div>
-                        <Icon name="chevron-right" size={20} className="text-ink-400" />
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
+                <Icon name="chevron-right" size={18} className="text-ink-400" />
+              </Link>
+            ))}
           </div>
-        </div>
+        )}
+      </section>
 
-        {/* Upcoming Sessions */}
-        <div>
-          <div className="rounded-xl border bg-white shadow-sm">
-            <div className="border-b p-4">
-              <h2 className="flex items-center gap-2 font-semibold text-ink-900">
-                <Icon name="clock" size={20} />
-                Upcoming Sessions
-              </h2>
-            </div>
-            <div className="p-4">
-              {dashboard.upcomingSessions.length === 0 ? (
-                <p className="py-4 text-center text-sm text-ink-500">
-                  No upcoming sessions scheduled.
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  {dashboard.upcomingSessions.map((session) => (
-                    <div key={session.id} className="flex items-start gap-3">
-                      <div className="flex h-12 w-12 flex-col items-center justify-center rounded-lg bg-brand-50 text-brand-600">
-                        <span className="text-xs font-medium">
-                          {new Date(session.scheduledAt).toLocaleDateString("en-US", {
-                            weekday: "short",
-                          })}
-                        </span>
-                        <span className="text-lg font-bold">
-                          {new Date(session.scheduledAt).getDate()}
-                        </span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="truncate font-medium text-ink-900">{session.class.name}</p>
-                        <p className="text-sm text-ink-500">
-                          {new Date(session.scheduledAt).toLocaleTimeString("en-US", {
-                            hour: "numeric",
-                            minute: "2-digit",
-                          })}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+      {/* Upcoming Sessions */}
+      <section className="mb-8">
+        <SectionHeader title="Upcoming Sessions" subtitle="Next 7 days" />
+        {dashboard.upcomingSessions.length === 0 ? (
+          <div className="card p-6 text-center text-sm text-ink-500">
+            No upcoming sessions scheduled.
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {dashboard.upcomingSessions.map((session) => (
+              <div key={session.id} className="card flex items-center gap-3 p-4">
+                <div className="flex size-12 flex-none flex-col items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+                  <span className="text-[10px] font-bold uppercase">
+                    {new Date(session.scheduledAt).toLocaleDateString("en-US", { weekday: "short" })}
+                  </span>
+                  <span className="text-lg font-extrabold">
+                    {new Date(session.scheduledAt).getDate()}
+                  </span>
                 </div>
-              )}
-            </div>
+                <div className="min-w-0">
+                  <p className="truncate font-bold text-ink-900">{session.class.name}</p>
+                  <p className="text-sm text-ink-500">
+                    {new Date(session.scheduledAt).toLocaleTimeString("en-US", {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
+        )}
+      </section>
 
-          {/* Quick Actions */}
-          <div className="mt-6 rounded-xl border bg-white p-4 shadow-sm">
-            <h2 className="mb-4 font-semibold text-ink-900">Quick Actions</h2>
-            <div className="space-y-2">
-              <LinkButton href="/classhub/create" variant="outline" className="w-full justify-start">
-                <Icon name="plus" size={16} />
-                Create New Class
-              </LinkButton>
-              <LinkButton href="/classhub/attendance" variant="outline" className="w-full justify-start">
-                <Icon name="clipboard-check" size={16} />
-                Take Attendance
-              </LinkButton>
-              <LinkButton href="/classhub/assignments" variant="outline" className="w-full justify-start">
-                <Icon name="book-open" size={16} />
-                Manage Assignments
-              </LinkButton>
-            </div>
-          </div>
+      {/* Quick Actions */}
+      <section>
+        <SectionHeader title="Quick Actions" />
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Link href="/classhub/create" className="card flex items-center gap-3 p-4 transition-colors hover:bg-ink-50">
+            <span className="flex size-10 items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+              <Icon name="plus" size={20} />
+            </span>
+            <span className="font-medium text-ink-900">New Class</span>
+          </Link>
+          <Link href="/classhub/attendance" className="card flex items-center gap-3 p-4 transition-colors hover:bg-ink-50">
+            <span className="flex size-10 items-center justify-center rounded-xl bg-success-50 text-success-600">
+              <Icon name="check-square" size={20} />
+            </span>
+            <span className="font-medium text-ink-900">Take Attendance</span>
+          </Link>
+          <Link href="/classhub/assignments" className="card flex items-center gap-3 p-4 transition-colors hover:bg-ink-50">
+            <span className="flex size-10 items-center justify-center rounded-xl bg-accent-50 text-accent-600">
+              <Icon name="file-text" size={20} />
+            </span>
+            <span className="font-medium text-ink-900">Assignments</span>
+          </Link>
         </div>
-      </div>
+      </section>
     </div>
   );
 }

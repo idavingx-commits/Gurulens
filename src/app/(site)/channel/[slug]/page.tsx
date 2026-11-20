@@ -1,45 +1,40 @@
-/**
- * Channel View Page
- */
-
-import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
+
+import { Avatar } from "@/components/ui/avatar";
+import { LinkButton } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icons";
+import { EmptyState, SectionHeader, Stat, VerifiedTick } from "@/components/ui/primitives";
 import { getAuth } from "@/lib/auth";
 import { getChannelBySlug, getChannelPosts, isFollowingChannel } from "@/lib/channels";
-import { Button, LinkButton } from "@/components/ui/button";
-import { Avatar } from "@/components/ui/avatar";
-import { Icon } from "@/components/ui/icons";
+import { compactNumber, timeAgo } from "@/lib/format";
 import { publicMediaUrl } from "@/lib/media";
-import { cn } from "@/lib/format";
 import { FollowButton } from "./follow-button";
-import { ChannelPosts } from "./channel-posts";
 import { CreatePostForm } from "./create-post-form";
+import { PostList } from "./post-list";
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+type Props = { params: Promise<{ slug: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const channel = await getChannelBySlug(slug);
-
-  if (!channel) {
-    return { title: "Channel Not Found | GuruLens" };
-  }
-
+  if (!channel) return { title: "Channel Not Found" };
   return {
-    title: `${channel.name} | GuruLens Channels`,
+    title: channel.name,
     description: channel.description || `Follow ${channel.name} on GuruLens`,
   };
 }
 
-export default async function ChannelPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ChannelPage({ params }: Props) {
   const { slug } = await params;
   const channel = await getChannelBySlug(slug);
 
-  if (!channel || !channel.isActive) {
-    notFound();
-  }
+  if (!channel || !channel.isActive) notFound();
 
   const auth = await getAuth();
   const isOwner = auth && channel.ownerType === "user" && channel.ownerId === auth.user.id;
-  const isFollowing = auth ? await isFollowingChannel(channel.id, auth.user.id) : false;
+  const following = auth ? await isFollowingChannel(channel.id, auth.user.id) : false;
 
   const avatarUrl = channel.avatarKey ? publicMediaUrl(channel.avatarKey) : null;
   const coverUrl = channel.coverKey ? publicMediaUrl(channel.coverKey) : null;
@@ -47,101 +42,84 @@ export default async function ChannelPage({ params }: { params: Promise<{ slug: 
   const { posts } = await getChannelPosts(channel.id, { limit: 20 });
 
   return (
-    <div className="min-h-screen">
-      {/* Cover Image */}
-      <div
-        className="h-32 bg-gradient-to-r from-brand-500/20 to-brand-600/10 md:h-48"
-        style={
-          coverUrl
-            ? { backgroundImage: `url(${coverUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
-            : undefined
-        }
-      />
+    <div className="mx-auto w-full max-w-3xl px-4 pt-6 pb-12 sm:px-6">
+      {/* Cover */}
+      {coverUrl && (
+        <div
+          className="mb-4 h-32 rounded-2xl bg-cover bg-center sm:h-40"
+          style={{ backgroundImage: `url(${coverUrl})` }}
+        />
+      )}
 
-      <div className="mx-auto max-w-4xl px-4 -mt-16 pb-8">
-        {/* Channel Header */}
-        <div className="mb-6 rounded-xl border bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-4 md:flex-row md:items-end">
-            <Avatar
-              name={channel.name}
-              src={avatarUrl}
-              size="xl"
-              className="-mt-12 border-4 border-white md:-mt-16"
-            />
-
-            <div className="flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-bold text-ink-900">{channel.name}</h1>
-                {channel.verifiedStatus === "verified" && (
-                  <span className="rounded bg-blue-500 px-2 py-0.5 text-xs font-semibold text-white">
-                    ✓ Verified
-                  </span>
-                )}
-              </div>
-              <p className="text-ink-500">@{channel.slug}</p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {isOwner ? (
-                <LinkButton href={`/channel/${slug}/settings`} variant="outline" size="sm">
-                  <Icon name="settings" size={16} />
-                  Settings
-                </LinkButton>
-              ) : (
-                auth && <FollowButton channelSlug={slug} initialFollowing={isFollowing} />
-              )}
-              <Button variant="outline" size="sm">
-                <Icon name="share-2" size={16} />
-              </Button>
-            </div>
+      {/* Header */}
+      <div className="mb-6 flex flex-wrap items-start gap-4">
+        <Avatar name={channel.name} src={avatarUrl} size="xl" />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl font-extrabold tracking-tight text-ink-900 sm:text-2xl">
+              {channel.name}
+            </h1>
+            {channel.verifiedStatus === "verified" && <VerifiedTick />}
           </div>
-
+          <p className="text-sm text-ink-500">@{channel.slug}</p>
           {channel.description && (
-            <p className="mt-4 text-ink-600">{channel.description}</p>
+            <p className="mt-2 text-sm text-ink-600">{channel.description}</p>
           )}
-
-          <div className="mt-4 flex items-center gap-6 text-sm">
-            <div className="flex items-center gap-1">
-              <Icon name="users" size={16} className="text-ink-400" />
-              <span className="font-semibold text-ink-900">{channel.followerCount}</span>
-              <span className="text-ink-500">followers</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Icon name="message-square" size={16} className="text-ink-400" />
-              <span className="font-semibold text-ink-900">{channel.postCount}</span>
-              <span className="text-ink-500">posts</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <Icon name="calendar" size={16} className="text-ink-400" />
-              <span className="text-ink-500">
-                Created {new Date(channel.createdAt).toLocaleDateString()}
-              </span>
-            </div>
+          <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-ink-400">
+            <span className="flex items-center gap-1">
+              <Icon name="users" size={14} />
+              <strong className="font-bold text-ink-700">{compactNumber(channel.followerCount)}</strong> followers
+            </span>
+            <span className="flex items-center gap-1">
+              <Icon name="file-text" size={14} />
+              <strong className="font-bold text-ink-700">{compactNumber(channel.postCount)}</strong> posts
+            </span>
+            <span>Created {timeAgo(channel.createdAt)}</span>
           </div>
         </div>
-
-        {/* Post Creation (for owners) */}
-        {isOwner && (
-          <div className="mb-6 rounded-xl border bg-white p-5 shadow-sm">
-            <CreatePostForm channelId={channel.id} channelSlug={slug} />
-          </div>
-        )}
-
-        {/* Posts */}
-        <div className="rounded-xl border bg-white shadow-sm">
-          <div className="border-b p-4">
-            <h2 className="font-semibold text-ink-900">Posts</h2>
-          </div>
-          <div className="p-4">
-            <ChannelPosts
-              initialPosts={posts}
-              channelId={channel.id}
-              channelSlug={slug}
-              isOwner={isOwner ?? false}
-            />
-          </div>
+        <div className="flex gap-2">
+          {isOwner ? (
+            <LinkButton href={`/channel/${slug}/settings`} variant="outline" size="sm">
+              <Icon name="settings" size={16} /> Settings
+            </LinkButton>
+          ) : auth ? (
+            <FollowButton channelSlug={slug} initialFollowing={following} />
+          ) : (
+            <LinkButton href={`/login?redirect=/channel/${slug}`} variant="outline" size="sm">
+              Follow
+            </LinkButton>
+          )}
         </div>
       </div>
+
+      {/* Stats */}
+      <div className="mb-8 grid grid-cols-3 gap-3">
+        <Stat label="Followers" value={compactNumber(channel.followerCount)} icon="users" />
+        <Stat label="Posts" value={channel.postCount} icon="file-text" />
+        <Stat label="Created" value={timeAgo(channel.createdAt)} icon="calendar" />
+      </div>
+
+      {/* Post creation */}
+      {isOwner && (
+        <div className="mb-8">
+          <SectionHeader title="Create Post" subtitle="Share an update with your followers" />
+          <div className="card p-4">
+            <CreatePostForm channelSlug={slug} />
+          </div>
+        </div>
+      )}
+
+      {/* Posts */}
+      <SectionHeader title="Posts" subtitle={`${posts.length} post${posts.length !== 1 ? "s" : ""}`} />
+      {posts.length === 0 ? (
+        <EmptyState
+          icon="file-text"
+          title="No posts yet"
+          description={isOwner ? "Create your first post above" : "Check back later for updates"}
+        />
+      ) : (
+        <PostList posts={posts} isOwner={isOwner ?? false} channelSlug={slug} />
+      )}
     </div>
   );
 }

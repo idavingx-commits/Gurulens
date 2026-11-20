@@ -1,56 +1,52 @@
 "use client";
 
 import { useState } from "react";
+
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icons";
+import { apiFetch } from "@/lib/client";
 
-interface FollowButtonProps {
+export function FollowButton({
+  channelSlug,
+  initialFollowing,
+}: {
   channelSlug: string;
   initialFollowing: boolean;
-}
+}) {
+  const [following, setFollowing] = useState(initialFollowing);
+  const [pending, setPending] = useState(false);
 
-export function FollowButton({ channelSlug, initialFollowing }: FollowButtonProps) {
-  const [isFollowing, setIsFollowing] = useState(initialFollowing);
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleToggleFollow = async () => {
-    setIsLoading(true);
-
+  async function toggle() {
+    if (pending) return;
+    setPending(true);
     try {
-      const res = await fetch(`/api/channels/${channelSlug}/follow`, {
+      const data = await apiFetch<{ following: boolean }>(`/api/channels/${channelSlug}/follow`, {
         method: "POST",
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to update follow status");
-      }
-
-      setIsFollowing(data.following);
-    } catch (error) {
-      console.error("Follow error:", error);
+      setFollowing(data.following);
+    } catch {
+      // ignore
     } finally {
-      setIsLoading(false);
+      setPending(false);
     }
-  };
+  }
 
   return (
     <Button
-      onClick={handleToggleFollow}
-      disabled={isLoading}
-      variant={isFollowing ? "outline" : "primary"}
+      onClick={toggle}
+      disabled={pending}
+      variant={following ? "outline" : "primary"}
       size="sm"
     >
-      {isFollowing ? (
+      {pending ? (
+        <Icon name="loader" size={16} className="animate-spin" />
+      ) : following ? (
         <>
-          <Icon name="user-minus" size={16} />
-          Unfollow
+          <Icon name="check" size={16} /> Following
         </>
       ) : (
         <>
-          <Icon name="user-plus" size={16} />
-          Follow
+          <Icon name="plus" size={16} /> Follow
         </>
       )}
     </Button>

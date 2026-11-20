@@ -1,16 +1,13 @@
-/**
- * Create Channel Page
- */
-
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+
+import { Icon } from "@/components/ui/icons";
+import { InfoNote } from "@/components/ui/primitives";
 import { getAuth } from "@/lib/auth";
 import { getChannelUsage } from "@/lib/channels";
 import { CreateChannelForm } from "./create-channel-form";
 
-export const metadata = {
-  title: "Create Channel | GuruLens",
-  description: "Create a new educational channel to share content with your followers",
-};
+export const metadata: Metadata = { title: "Create Channel" };
 
 export default async function CreateChannelPage() {
   const auth = await getAuth();
@@ -19,7 +16,6 @@ export default async function CreateChannelPage() {
     redirect("/login?redirect=/channels/create");
   }
 
-  // Check if user can create channels
   const usage = await getChannelUsage(auth.user.id);
   
   if (!usage.canCreate) {
@@ -27,17 +23,19 @@ export default async function CreateChannelPage() {
   }
 
   return (
-    <div className="container max-w-2xl py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Create Channel</h1>
-        <p className="text-muted-foreground">
-          Create a channel to share educational content with your followers.
-          You have {usage.remaining === -1 ? "unlimited" : usage.remaining} channel
-          {usage.remaining !== 1 ? "s" : ""} remaining.
+    <div className="mx-auto w-full max-w-xl px-4 pt-8 pb-12 sm:px-6">
+      <div className="mb-6">
+        <h1 className="text-2xl font-extrabold tracking-tight text-ink-900">Create Channel</h1>
+        <p className="mt-1 text-[13px] text-ink-500">
+          Share educational content with your followers. You have{" "}
+          <span className="font-bold text-brand-600">
+            {usage.remaining === -1 ? "unlimited" : usage.remaining}
+          </span>{" "}
+          channel{usage.remaining !== 1 ? "s" : ""} remaining.
         </p>
       </div>
 
-      <CreateChannelForm userId={auth.user.id} />
+      <CreateChannelForm />
     </div>
   );
 }

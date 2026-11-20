@@ -1,22 +1,16 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
+
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Icon } from "@/components/ui/icons";
+import { Field, Input, Select, Textarea } from "@/components/ui/input";
+import { InfoNote } from "@/components/ui/primitives";
+import { apiFetch, ClientApiError } from "@/lib/client";
 
-interface Subject {
-  id: string;
-  name: string;
-  nameSi: string | null;
-}
-
-interface Grade {
-  id: string;
-  name: string;
-  nameSi: string | null;
-}
+type Subject = { id: string; name: string; nameSi: string | null };
+type Grade = { id: string; name: string };
 
 export function CreateClassForm({
   subjects,
@@ -26,204 +20,122 @@ export function CreateClassForm({
   grades: Grade[];
 }) {
   const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (pending) return;
     setError(null);
-    setIsSubmitting(true);
 
     const formData = new FormData(e.currentTarget);
     const data = {
       name: formData.get("name") as string,
-      description: formData.get("description") as string,
+      description: formData.get("description") as string || undefined,
       subjectId: formData.get("subjectId") as string || undefined,
       gradeId: formData.get("gradeId") as string || undefined,
       mode: formData.get("mode") as string,
-      maxStudents: formData.get("maxStudents") ? parseInt(formData.get("maxStudents") as string) : undefined,
-      feeAmount: formData.get("feeAmount") ? parseInt(formData.get("feeAmount") as string) : undefined,
+      maxStudents: formData.get("maxStudents") ? Number(formData.get("maxStudents")) : undefined,
+      feeAmount: formData.get("feeAmount") ? Number(formData.get("feeAmount")) : undefined,
       location: formData.get("location") as string || undefined,
       onlineLink: formData.get("onlineLink") as string || undefined,
     };
 
+    if (!data.name?.trim()) return setError("Please enter a class name.");
+
+    setPending(true);
     try {
-      const res = await fetch("/api/classes", {
+      const result = await apiFetch<{ class: { id: string } }>("/api/classes", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: data,
       });
-
-      const result = await res.json();
-
-      if (!res.ok) {
-        throw new Error(result.error || "Failed to create class");
-      }
-
       router.push(`/classhub/class/${result.class.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create class");
+      setError(err instanceof ClientApiError ? err.message : "Something went wrong.");
     } finally {
-      setIsSubmitting(false);
+      setPending(false);
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 rounded-xl border bg-white p-6 shadow-sm">
+    <form onSubmit={submit} className="space-y-5">
       {error && (
-        <div className="rounded-lg border border-danger-200 bg-danger-50 p-3 text-sm text-danger-700">
+        <InfoNote icon="alert" tone="danger">
           {error}
-        </div>
+        </InfoNote>
       )}
 
-      <div>
-        <label htmlFor="name" className="mb-1 block text-sm font-medium text-ink-700">
-          Class Name *
-        </label>
-        <Input
-          id="name"
-          name="name"
-          required
-          placeholder="e.g., A/L Chemistry 2024"
-        />
-        <p className="mt-1 text-xs text-ink-500">Give your class a descriptive name</p>
-      </div>
+      <Field label="Class name" htmlFor="name" hint="Give your class a descriptive name">
+        <Input id="name" name="name" placeholder="e.g., A/L Chemistry 2024" required />
+      </Field>
 
-      <div>
-        <label htmlFor="description" className="mb-1 block text-sm font-medium text-ink-700">
-          Description
-        </label>
-        <textarea
-          id="description"
-          name="description"
-          rows={3}
-          className="w-full rounded-lg border border-ink-200 p-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-          placeholder="Describe your class..."
-        />
-      </div>
+      <Field label="Description" htmlFor="description">
+        <Textarea id="description" name="description" placeholder="Describe your class…" rows={3} />
+      </Field>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <label htmlFor="subjectId" className="mb-1 block text-sm font-medium text-ink-700">
-            Subject
-          </label>
-          <select
-            id="subjectId"
-            name="subjectId"
-            className="w-full rounded-lg border border-ink-200 p-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-          >
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field label="Subject" htmlFor="subjectId">
+          <Select id="subjectId" name="subjectId">
             <option value="">Select subject</option>
-            {subjects.map((subject) => (
-              <option key={subject.id} value={subject.id}>
-                {subject.name}
-                {subject.nameSi && ` (${subject.nameSi})`}
+            {subjects.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+                {s.nameSi && ` (${s.nameSi})`}
               </option>
             ))}
-          </select>
-        </div>
+          </Select>
+        </Field>
 
-        <div>
-          <label htmlFor="gradeId" className="mb-1 block text-sm font-medium text-ink-700">
-            Grade/Level
-          </label>
-          <select
-            id="gradeId"
-            name="gradeId"
-            className="w-full rounded-lg border border-ink-200 p-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-          >
+        <Field label="Grade / Level" htmlFor="gradeId">
+          <Select id="gradeId" name="gradeId">
             <option value="">Select grade</option>
-            {grades.map((grade) => (
-              <option key={grade.id} value={grade.id}>
-                {grade.name}
+            {grades.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name}
               </option>
             ))}
-          </select>
-        </div>
+          </Select>
+        </Field>
       </div>
 
-      <div>
-        <label htmlFor="mode" className="mb-1 block text-sm font-medium text-ink-700">
-          Class Mode *
-        </label>
-        <select
-          id="mode"
-          name="mode"
-          required
-          defaultValue="both"
-          className="w-full rounded-lg border border-ink-200 p-3 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-        >
-          <option value="physical">Physical Only</option>
-          <option value="online">Online Only</option>
+      <Field label="Class mode" htmlFor="mode">
+        <Select id="mode" name="mode" defaultValue="both">
+          <option value="physical">Physical only</option>
+          <option value="online">Online only</option>
           <option value="both">Physical & Online</option>
-        </select>
+        </Select>
+      </Field>
+
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field label="Max students" htmlFor="maxStudents" hint="Leave empty for unlimited">
+          <Input id="maxStudents" name="maxStudents" type="number" min={1} placeholder="e.g., 30" />
+        </Field>
+
+        <Field label="Monthly fee (LKR)" htmlFor="feeAmount" hint="Leave empty if free">
+          <Input id="feeAmount" name="feeAmount" type="number" min={0} placeholder="e.g., 3000" />
+        </Field>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <div>
-          <label htmlFor="maxStudents" className="mb-1 block text-sm font-medium text-ink-700">
-            Maximum Students
-          </label>
-          <Input
-            id="maxStudents"
-            name="maxStudents"
-            type="number"
-            min={1}
-            placeholder="e.g., 30"
-          />
-          <p className="mt-1 text-xs text-ink-500">Leave empty for unlimited</p>
-        </div>
+      <Field label="Location" htmlFor="location" hint="Physical location for in-person classes">
+        <Input id="location" name="location" placeholder="e.g., Colombo, Sri Lanka" />
+      </Field>
 
-        <div>
-          <label htmlFor="feeAmount" className="mb-1 block text-sm font-medium text-ink-700">
-            Monthly Fee (LKR)
-          </label>
-          <Input
-            id="feeAmount"
-            name="feeAmount"
-            type="number"
-            min={0}
-            placeholder="e.g., 3000"
-          />
-          <p className="mt-1 text-xs text-ink-500">Leave empty if free</p>
-        </div>
-      </div>
+      <Field label="Online link" htmlFor="onlineLink" hint="Zoom, Google Meet, etc.">
+        <Input id="onlineLink" name="onlineLink" type="url" placeholder="https://zoom.us/j/…" />
+      </Field>
 
-      <div>
-        <label htmlFor="location" className="mb-1 block text-sm font-medium text-ink-700">
-          Location
-        </label>
-        <Input
-          id="location"
-          name="location"
-          placeholder="e.g., Colombo, Sri Lanka"
-        />
-        <p className="mt-1 text-xs text-ink-500">Physical location for in-person classes</p>
-      </div>
-
-      <div>
-        <label htmlFor="onlineLink" className="mb-1 block text-sm font-medium text-ink-700">
-          Online Meeting Link
-        </label>
-        <Input
-          id="onlineLink"
-          name="onlineLink"
-          type="url"
-          placeholder="https://zoom.us/j/..."
-        />
-        <p className="mt-1 text-xs text-ink-500">Zoom, Google Meet, or other video call link</p>
-      </div>
-
-      <div className="flex gap-4">
-        <Button type="submit" disabled={isSubmitting} className="flex-1">
-          {isSubmitting && <Icon name="loader" size={16} className="animate-spin" />}
-          Create Class
+      <div className="flex gap-3 pt-3">
+        <Button type="submit" disabled={pending} className="flex-1">
+          {pending ? (
+            <>
+              <Icon name="loader" size={18} className="animate-spin" />
+              Creating…
+            </>
+          ) : (
+            "Create Class"
+          )}
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => router.back()}
-          disabled={isSubmitting}
-        >
+        <Button type="button" variant="outline" onClick={() => router.back()} disabled={pending}>
           Cancel
         </Button>
       </div>

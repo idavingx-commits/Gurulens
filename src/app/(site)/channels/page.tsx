@@ -1,174 +1,101 @@
-/**
- * Channels Browse Page
- * Discover and follow educational channels
- */
-
-import { Suspense } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
+
+import { Avatar } from "@/components/ui/avatar";
+import { LinkButton } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icons";
+import { Input } from "@/components/ui/input";
+import { EmptyState, InfoNote, SectionHeader, VerifiedTick } from "@/components/ui/primitives";
 import { getAuth } from "@/lib/auth";
 import { getTrendingChannels, searchChannels, getChannelUsage, getUserChannels } from "@/lib/channels";
-import { Button, LinkButton } from "@/components/ui/button";
-import { Avatar } from "@/components/ui/avatar";
-import { Input } from "@/components/ui/input";
-import { Icon } from "@/components/ui/icons";
+import { compactNumber } from "@/lib/format";
 import { publicMediaUrl } from "@/lib/media";
-import { cn } from "@/lib/format";
 
-export const metadata = {
-  title: "Channels | GuruLens",
+export const metadata: Metadata = {
+  title: "Channels",
   description: "Discover and follow educational channels from verified teachers",
 };
 
 function ChannelCard({ channel }: { channel: any }) {
   const avatarUrl = channel.avatarKey ? publicMediaUrl(channel.avatarKey) : null;
+  const followers = channel._count?.followers ?? channel.followerCount ?? 0;
+  const posts = channel._count?.posts ?? channel.postCount ?? 0;
 
   return (
-    <Link href={`/channel/${channel.slug}`}>
-      <div className="h-full rounded-xl border bg-white p-4 shadow-sm transition-shadow hover:shadow-md">
-        <div className="mb-3 flex items-start gap-3">
-          <Avatar
-            name={channel.name}
-            src={avatarUrl}
-            size="md"
-          />
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h3 className="truncate font-semibold text-ink-900">{channel.name}</h3>
-              {channel.verifiedStatus === "verified" && (
-                <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700">
-                  ✓
-                </span>
-              )}
-            </div>
-            <p className="text-sm text-ink-500">@{channel.slug}</p>
+    <Link href={`/channel/${channel.slug}`} className="card block p-4 transition-shadow hover:shadow-lg">
+      <div className="flex items-start gap-3">
+        <Avatar name={channel.name} src={avatarUrl} size="lg" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <span className="truncate text-[15px] font-bold text-ink-900">{channel.name}</span>
+            {channel.verifiedStatus === "verified" && <VerifiedTick className="size-4" />}
           </div>
+          <p className="text-sm text-ink-500">@{channel.slug}</p>
         </div>
-        {channel.description && (
-          <p className="mb-3 line-clamp-2 text-sm text-ink-600">{channel.description}</p>
-        )}
-        <div className="flex items-center gap-4 text-xs text-ink-400">
-          <span className="flex items-center gap-1">
-            <Icon name="users" size={12} />
-            {channel._count?.followers ?? channel.followerCount ?? 0} followers
-          </span>
-          <span className="flex items-center gap-1">
-            <Icon name="message-square" size={12} />
-            {channel._count?.posts ?? channel.postCount ?? 0} posts
-          </span>
-        </div>
+      </div>
+      {channel.description && (
+        <p className="mt-2 line-clamp-2 text-sm text-ink-600">{channel.description}</p>
+      )}
+      <div className="mt-3 flex items-center gap-4 text-xs text-ink-400">
+        <span className="flex items-center gap-1">
+          <Icon name="users" size={13} /> {compactNumber(followers)}
+        </span>
+        <span className="flex items-center gap-1">
+          <Icon name="file-text" size={13} /> {compactNumber(posts)} posts
+        </span>
       </div>
     </Link>
-  );
-}
-
-async function MyChannelsSection() {
-  const auth = await getAuth();
-  if (!auth) return null;
-
-  const [channels, usage] = await Promise.all([
-    getUserChannels(auth.user.id),
-    getChannelUsage(auth.user.id),
-  ]);
-
-  return (
-    <section className="mb-8">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-ink-900">My Channels</h2>
-          <p className="text-sm text-ink-500">
-            {usage.used} of {usage.limit === -1 ? "unlimited" : usage.limit} channels used
-          </p>
-        </div>
-        {usage.canCreate && (
-          <LinkButton href="/channels/create">
-            <Icon name="plus" size={16} />
-            Create Channel
-          </LinkButton>
-        )}
-      </div>
-
-      {channels.length === 0 ? (
-        <div className="rounded-xl border bg-white p-6 text-center">
-          <p className="mb-4 text-ink-500">You haven't created any channels yet.</p>
-          {usage.canCreate && (
-            <LinkButton href="/channels/create" variant="outline">
-              Create Your First Channel
-            </LinkButton>
-          )}
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {channels.map((channel) => (
-            <ChannelCard key={channel.id} channel={channel} />
-          ))}
-        </div>
-      )}
-
-      {!usage.canCreate && (
-        <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4">
-          <p className="text-sm text-amber-800">
-            You've reached your channel limit ({usage.limit}).{" "}
-            <Link href="/pricing" className="font-medium underline">
-              Upgrade your plan
-            </Link>{" "}
-            to create more channels.
-          </p>
-        </div>
-      )}
-    </section>
-  );
-}
-
-async function TrendingChannelsSection() {
-  const channels = await getTrendingChannels(6);
-
-  return (
-    <section className="mb-8">
-      <div className="mb-4 flex items-center gap-2">
-        <Icon name="trending-up" size={20} className="text-brand-500" />
-        <h2 className="text-xl font-semibold text-ink-900">Trending Channels</h2>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {channels.map((channel) => (
-          <ChannelCard key={channel.id} channel={channel} />
-        ))}
-      </div>
-    </section>
   );
 }
 
 export default async function ChannelsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string }>;
+  searchParams: Promise<{ q?: string; error?: string }>;
 }) {
-  const { q } = await searchParams;
+  const { q, error: errorParam } = await searchParams;
   const auth = await getAuth();
 
-  let searchResults = null;
-  if (q) {
-    searchResults = await searchChannels(q);
-  }
+  const usage = auth ? await getChannelUsage(auth.user.id) : null;
+  const myChannels = auth ? await getUserChannels(auth.user.id) : [];
+  const trending = await getTrendingChannels(6);
+  const searchResults = q ? await searchChannels(q) : null;
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8">
-      <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="mx-auto w-full max-w-5xl px-4 pt-8 pb-12 sm:px-6">
+      {/* Header */}
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-ink-900">Channels</h1>
-          <p className="text-ink-500">
-            Follow educational channels to stay updated with your favorite teachers
+          <h1 className="text-2xl font-extrabold tracking-tight text-ink-900 sm:text-3xl">Channels</h1>
+          <p className="mt-1 text-[13px] text-ink-500">
+            Follow teachers and get updates directly in your feed.
           </p>
         </div>
+        {auth && usage?.canCreate && (
+          <LinkButton href="/channels/create">
+            <Icon name="plus" size={18} /> Create Channel
+          </LinkButton>
+        )}
       </div>
+
+      {/* Errors */}
+      {errorParam === "limit_reached" && (
+        <InfoNote icon="alert" tone="warn" className="mb-6">
+          You've reached your channel limit.{" "}
+          <Link href="/pricing" className="font-bold text-warn-700 hover:underline">
+            Upgrade your plan
+          </Link>{" "}
+          to create more channels.
+        </InfoNote>
+      )}
 
       {/* Search */}
       <form className="mb-8">
-        <div className="relative max-w-md">
-          <Icon name="search" size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" />
+        <div className="relative max-w-sm">
+          <Icon name="search" size={18} className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-400" />
           <Input
             name="q"
-            placeholder="Search channels..."
+            placeholder="Search channels…"
             defaultValue={q}
             className="pl-10"
           />
@@ -177,34 +104,82 @@ export default async function ChannelsPage({
 
       {/* Search Results */}
       {searchResults && (
-        <section className="mb-8">
-          <h2 className="mb-4 text-xl font-semibold text-ink-900">
-            Search Results for "{q}" ({searchResults.length})
-          </h2>
+        <section className="mb-10">
+          <SectionHeader
+            title={`Results for "${q}"`}
+            subtitle={`${searchResults.length} channel${searchResults.length !== 1 ? "s" : ""} found`}
+          />
           {searchResults.length === 0 ? (
-            <p className="text-ink-500">No channels found matching your search.</p>
+            <EmptyState
+              icon="search"
+              title="No channels found"
+              description="Try a different search term"
+            />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {searchResults.map((channel) => (
-                <ChannelCard key={channel.id} channel={channel} />
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {searchResults.map((ch) => (
+                <ChannelCard key={ch.id} channel={ch} />
               ))}
             </div>
           )}
         </section>
       )}
 
-      {/* My Channels (if logged in) */}
-      {auth && (
-        <Suspense fallback={<div className="animate-pulse rounded-xl bg-ink-100 h-48" />}>
-          <MyChannelsSection />
-        </Suspense>
+      {/* My Channels */}
+      {auth && myChannels.length > 0 && !q && (
+        <section className="mb-10">
+          <SectionHeader
+            title="My Channels"
+            subtitle={usage ? `${usage.used} of ${usage.limit === -1 ? "unlimited" : usage.limit} used` : undefined}
+            action={
+              usage?.canCreate ? (
+                <Link href="/channels/create" className="text-sm font-bold text-brand-600 hover:underline">
+                  + New channel
+                </Link>
+              ) : undefined
+            }
+          />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {myChannels.map((ch) => (
+              <ChannelCard key={ch.id} channel={ch} />
+            ))}
+          </div>
+          {usage && !usage.canCreate && (
+            <InfoNote icon="info" className="mt-4">
+              You've reached your channel limit ({usage.limit}).{" "}
+              <Link href="/pricing" className="font-bold text-brand-700 hover:underline">
+                Upgrade
+              </Link>{" "}
+              to create more.
+            </InfoNote>
+          )}
+        </section>
       )}
 
-      {/* Trending Channels */}
-      {!q && (
-        <Suspense fallback={<div className="animate-pulse rounded-xl bg-ink-100 h-48" />}>
-          <TrendingChannelsSection />
-        </Suspense>
+      {/* Trending */}
+      {!q && trending.length > 0 && (
+        <section>
+          <SectionHeader title="Trending Channels" subtitle="Popular this week" />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {trending.map((ch) => (
+              <ChannelCard key={ch.id} channel={ch} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Empty state when no channels at all */}
+      {!q && trending.length === 0 && myChannels.length === 0 && (
+        <EmptyState
+          icon="radio"
+          title="No channels yet"
+          description="Be the first to create a channel"
+          action={
+            auth && usage?.canCreate ? (
+              <LinkButton href="/channels/create">Create Channel</LinkButton>
+            ) : undefined
+          }
+        />
       )}
     </div>
   );
