@@ -1,15 +1,15 @@
 # Project Status
 
-Last updated: 2026-11-19
+Last updated: 2026-11-20
 
 ## Live release
 
 - **URL:** https://gurulens.us (apex canonical)
 - **`www`:** 308-redirects to the apex, preserving path/query
-- **Branch:** `feat/cloudflare-neon` (deployed from commit `74f42ba`; not merged to `main`)
-- **Worker:** `gurulens`, version `77bb1aa5-4786-4d1b-a5cb-ea4b4cb06835`
+- **Branch:** `feat/cloudflare-neon` (deployed from commit `fd4e55e`)
+- **Worker:** `gurulens`, version `c8112189-1fea-4d2c-b00e-a275156063ba` (ecosystem upgrade)
 - **Hosting:** Cloudflare Workers via `@opennextjs/cloudflare`
-- **Database:** Neon Postgres, project `cold-haze-56644745`, branch `production`, database `neondb`
+- **Database:** Neon Postgres, project `ancient-hall-97118808`, branch `production`, database `neondb`
 - **Media:** Neon Object Storage, private bucket `assets` (S3 API + presigned uploads)
 - **Redirect Worker:** `gurulens-www` (`workers/www-redirect/`)
 
@@ -20,15 +20,29 @@ deleted from Netlify.
 
 | Item | Count |
 |---|---:|
-| Public tables | 34 |
-| Indexes | 85 |
-| Foreign keys | 40 |
+| Public tables | **60** (34 original + 26 ecosystem upgrade) |
+| Indexes | **163** |
+| Foreign keys | **76** |
 | Users | 2 (1 admin, 1 moderator) |
 | Teacher profiles | **0** |
 | Demo teachers / students | **0** |
-| Sessions / media rows after cleanup | 0 / 0 |
 | Subjects / districts / grades / languages | 22 / 25 / 11 / 3 |
 | Badges | 4 |
+| **Subscription plans** | **6** (Free, Teacher Pro, Institute, Institute Plus, Campus Pilot, Campus Pro) |
+
+### New tables added (2026-11-20)
+
+**Organizations:** `Organization`, `OrganizationBranch`, `OrganizationMember`, `OrganizationVerificationRequest`
+
+**Channels:** `Channel`, `ChannelFollow`, `ChannelPost`, `ChannelReaction`, `ChannelVerificationRequest`, `VoiceMessage`, `Poll`, `PollVote`
+
+**ClassHub:** `Class`, `ClassEnrollment`, `ClassSession`, `Attendance`, `Assignment`, `Submission`
+
+**Guardian:** `Guardian`, `GuardianStudent`
+
+**Subscriptions:** `Plan`, `UserSubscription`, `FeatureEntitlement`
+
+**ClassPulse:** `VirtualDevice`, `DeviceEvent`, `StudentCard`
 
 The production seed creates reference data, badges and the bootstrap
 admin/moderator only. Demo teachers, students, posts and reviews are opt-in
