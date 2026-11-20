@@ -109,6 +109,45 @@ Production currently has exactly these two accounts and **zero teacher profiles*
 
 ## 9. Changelog (newest first)
 
+### 2026-11-20 — Ecosystem Upgrade Phase 2: Core APIs Implementation
+
+**New Core Service Libraries:**
+- `src/lib/channels.ts` - Channel management with 3-channel limit enforcement for free users
+- `src/lib/classhub.ts` - Class management, enrollments, sessions, attendance, assignments
+- `src/lib/classpulse.ts` - Virtual device management and attendance simulation
+- `src/lib/organizations.ts` - Institute/school creation and member management
+- `src/lib/guardians.ts` - Parent-student linking and monitoring
+- `src/lib/subscriptions.ts` - Plan management and feature entitlements
+- `src/lib/roles.ts` - Multi-role permission system with workspace access control
+
+**New API Routes:**
+- `/api/channels` - CRUD, search, trending channels
+- `/api/channels/[slug]/posts` - Channel posts, voice messages, polls
+- `/api/channels/[slug]/follow` - Follow/unfollow channels
+- `/api/classes` - Teacher class management
+- `/api/classes/[id]/enrollments` - Student enrollment
+- `/api/classes/[id]/sessions` - Class sessions
+- `/api/classes/[id]/sessions/[sessionId]/attendance` - Attendance tracking
+- `/api/classpulse/devices` - Virtual device management
+- `/api/classpulse/simulate` - Card scan and bulk attendance simulation
+- `/api/organizations` - Institute/school management
+- `/api/subscriptions` - Plans and user subscriptions
+- `/api/guardian` - Parent-child linking and monitoring
+
+**Features Implemented:**
+- 3-channel limit for free teachers (server-enforced)
+- Voice messages with waveform visualization
+- Poll creation and voting
+- Bulk attendance simulation for ClassPulse
+- Virtual student card generation
+- Multi-role permission checking
+- Parent dashboard with child monitoring
+
+**Deployment:**
+- Worker version: `150d86de-1443-416a-a242-3d0978080811`
+- All 60 tests passing
+- TypeScript, Next.js, and Cloudflare builds verified
+
 ### 2026-11-20 — Ecosystem Upgrade Phase 1: Schema Extension
 
 **Database Migration:**
