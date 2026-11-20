@@ -7,8 +7,9 @@ import { useState } from "react";
 import { Avatar } from "@/components/ui/avatar";
 import { Icon } from "@/components/ui/icons";
 import { Badge } from "@/components/ui/primitives";
+import { VoicePlayer } from "@/components/ui/voice-player";
 import { apiFetch } from "@/lib/client";
-import { cn, timeAgo } from "@/lib/format";
+import { cn, compactNumber, timeAgo } from "@/lib/format";
 
 export type PostPollOption = {
   label: string;
@@ -26,6 +27,11 @@ export type PostPoll = {
   totalVotes: number;
 };
 
+export type PostAttachment = {
+  id: string;
+  mimeType: string;
+};
+
 export type PostItem = {
   id: string;
   type: string;
@@ -36,16 +42,10 @@ export type PostItem = {
   reactionCount: number;
   likedByMe: boolean;
   author: { id: string; name: string; avatarKey: string | null };
-  voiceMessage: { audioKey: string; durationSec: number } | null;
+  voiceMessage: { mediaId: string; durationSec: number; waveform: number[] } | null;
+  attachments: PostAttachment[];
   poll: PostPoll | null;
 };
-
-function formatDuration(seconds: number): string {
-  const total = Math.max(0, Math.round(seconds));
-  const mins = Math.floor(total / 60);
-  const secs = total % 60;
-  return `${mins}:${String(secs).padStart(2, "0")}`;
-}
 
 function PostCard({
   post,
@@ -64,6 +64,7 @@ function PostCard({
   const [poll, setPoll] = useState(post.poll);
   const [voting, setVoting] = useState(false);
   const [reacting, setReacting] = useState(false);
+  const [shared, setShared] = useState(false);
 
   async function handleLike() {
     if (!signedIn) {
@@ -185,21 +186,72 @@ function PostCard({
       ) : null}
 
       {post.voiceMessage ? (
-        <div className="mt-3 flex items-center gap-2.5 rounded-2xl border border-ink-100 bg-ink-50/60 p-2.5">
-          <span className="flex size-8 flex-none items-center justify-center rounded-full bg-brand-50 text-brand-600">
-            <Icon name="volume" size={15} />
-          </span>
-          <audio
-            controls
-            preload="metadata"
-            src={`/api/media/${post.voiceMessage.audioKey}`}
-            className="h-8 w-full"
-          />
-          <span className="flex-none text-[11.5px] font-bold text-ink-400">
-            {formatDuration(post.voiceMessage.durationSec)}
-          </span>
+        <VoicePlayer
+          src={`/api/media/${post.voiceMessage.mediaId}`}
+          durationSec={post.voiceMessage.durationSec}
+          waveform={post.voiceMessage.waveform}
+        />
+      ) : null}
+
+      {post.attachments.some((a) => a.mimeType.startsWith("image/")) ? (
+        <div
+          className={cn(
+            "mt-3 grid gap-1.5",
+            post.attachments.filter((a) => a.mimeType.startsWith("image/")).length === 1
+              ? "grid-cols-1"
+              : "grid-cols-2",
+          )}
+        >
+          {post.attachments
+            .filter((a) => a.mimeType.startsWith("image/"))
+            .slice(0, 4)
+            .map((attachment, index) => (
+              <a
+                key={attachment.id}
+                href={`/api/media/${attachment.id}`}
+                target="_blank"
+                rel="noreferrer"
+                className="group relative block overflow-hidden rounded-xl bg-ink-100"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`/api/media/${attachment.id}`}
+                  alt={`Channel attachment ${index + 1}`}
+                  loading="lazy"
+                  className={cn(
+                    "w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]",
+                    post.attachments.filter((a) => a.mimeType.startsWith("image/")).length === 1
+                      ? "max-h-[520px]"
+                      : "aspect-square",
+                  )}
+                />
+              </a>
+            ))}
         </div>
       ) : null}
+
+      {post.attachments
+        .filter((a) => !a.mimeType.startsWith("image/"))
+        .map((attachment) => (
+          <a
+            key={attachment.id}
+            href={`/api/media/${attachment.id}`}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-2 flex items-center gap-3 rounded-2xl border border-ink-100 bg-ink-50/60 p-3 transition-colors hover:border-brand-200 hover:bg-white"
+          >
+            <span className="flex size-9 flex-none items-center justify-center rounded-xl bg-danger-50 text-danger-600">
+              <Icon name="file-text" size={18} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[12.5px] font-bold text-ink-800">Attachment</span>
+              <span className="block text-[11px] font-semibold text-ink-400">
+                {attachment.mimeType === "application/pdf" ? "PDF document" : "File"} · tap to open
+              </span>
+            </span>
+            <Icon name="download" size={16} className="flex-none text-ink-400" />
+          </a>
+        ))}
 
       {poll ? (
         <div className="mt-3 rounded-2xl border border-ink-100 bg-ink-50/50 p-3.5">
@@ -262,7 +314,7 @@ function PostCard({
           )}
         >
           <Icon name="heart" size={15} className={liked ? "fill-current" : ""} />
-          {likes}
+          {compactNumber(likes)}
         </button>
         <Link
           href={`/channel/${channelSlug}`}
@@ -273,13 +325,24 @@ function PostCard({
         <button
           type="button"
           onClick={() => {
-            if (typeof navigator !== "undefined" && navigator.clipboard) {
-              void navigator.clipboard.writeText(window.location.href);
+            const url = `${window.location.origin}/channel/${channelSlug}`;
+            if (typeof navigator.share === "function") {
+              void navigator.share({ title: "GuruLens channel", url }).catch(() => {});
+              return;
+            }
+            if (navigator.clipboard) {
+              void navigator.clipboard.writeText(url).then(
+                () => {
+                  setShared(true);
+                  window.setTimeout(() => setShared(false), 1800);
+                },
+                () => {},
+              );
             }
           }}
           className="flex items-center gap-1.5 text-[12.5px] font-bold text-ink-400 hover:text-ink-600"
         >
-          <Icon name="share" size={15} /> Share
+          <Icon name={shared ? "check" : "share"} size={15} /> {shared ? "Copied" : "Share"}
         </button>
       </div>
     </div>

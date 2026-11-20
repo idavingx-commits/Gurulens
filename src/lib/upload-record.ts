@@ -1,7 +1,15 @@
 import { ADMIN_ROLES, type Role } from "@/lib/constants";
 import { db } from "@/lib/db";
 
-export const UPLOAD_KINDS = ["avatar", "cover", "post_image", "video", "doc"] as const;
+export const UPLOAD_KINDS = [
+  "avatar",
+  "cover",
+  "post_image",
+  "video",
+  "doc",
+  "audio",
+  "post_file",
+] as const;
 export type UploadKind = (typeof UPLOAD_KINDS)[number];
 
 export const UPLOAD_VISIBILITY: Record<UploadKind, string> = {
@@ -10,6 +18,8 @@ export const UPLOAD_VISIBILITY: Record<UploadKind, string> = {
   post_image: "public",
   video: "public",
   doc: "private",
+  audio: "public",
+  post_file: "public",
 };
 
 export function isUploadKind(value: string): value is UploadKind {

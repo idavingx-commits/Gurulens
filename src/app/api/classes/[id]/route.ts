@@ -66,7 +66,7 @@ export async function GET(
       stats = await getClassStats(id);
     }
 
-    return NextResponse.json({ class: cls, stats });
+    return NextResponse.json({ ok: true, data: { class: cls, stats } });
   } catch (error) {
     console.error("Error in GET /api/classes/[id]:", error);
     return NextResponse.json(
@@ -110,7 +110,7 @@ export async function PATCH(
       schedule: data.schedule ? JSON.stringify(data.schedule) : undefined,
     });
 
-    return NextResponse.json({ class: updated });
+    return NextResponse.json({ ok: true, data: { class: updated } });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -155,7 +155,7 @@ export async function DELETE(
 
     await archiveClass(id);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ ok: true, data: { success: true } });
   } catch (error) {
     console.error("Error in DELETE /api/classes/[id]:", error);
     return NextResponse.json(

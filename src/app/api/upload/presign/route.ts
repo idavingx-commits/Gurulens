@@ -39,8 +39,12 @@ export const POST = route(async (req: NextRequest) => {
   }
 
   const { mimeTypes, limit } = normalizeKind(kind);
+  // Browsers append codec parameters (e.g. `audio/webm;codecs=opus`). The
+  // signature must use the bare MIME type and the browser must send exactly
+  // the same value back in the PUT header.
+  const contentType = body.contentType.split(";")[0]!.trim().toLowerCase();
 
-  if (!mimeTypes.includes(body.contentType)) {
+  if (!mimeTypes.includes(contentType)) {
     throw new ApiError(
       400,
       "Unsupported file type. Allowed: " + mimeTypes.join(", "),
@@ -56,14 +60,14 @@ export const POST = route(async (req: NextRequest) => {
     );
   }
 
-  const key = buildStorageKey(kind, body.contentType);
-  const uploadUrl = await presignUpload(key, body.contentType, 900);
+  const key = buildStorageKey(kind, contentType);
+  const uploadUrl = await presignUpload(key, contentType, 900);
 
   return ok({
     upload: {
       key,
       url: uploadUrl,
-      headers: { "content-type": body.contentType },
+      headers: { "content-type": contentType },
       expiresIn: 900,
       publicUrl: publicMediaUrl(key),
       kinds: UPLOAD_KINDS,

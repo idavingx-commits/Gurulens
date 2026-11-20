@@ -7,7 +7,6 @@ import { Icon } from "@/components/ui/icons";
 import { EmptyState, SectionHeader, Stat } from "@/components/ui/primitives";
 import { getAuth } from "@/lib/auth";
 import { getTeacherDashboard, getTeacherClasses } from "@/lib/classhub";
-import { timeAgo } from "@/lib/format";
 
 export const metadata: Metadata = { title: "ClassHub" };
 
@@ -53,16 +52,7 @@ export default async function ClassHubPage() {
 
       {/* Classes */}
       <section className="mb-8">
-        <SectionHeader
-          title="Your Classes"
-          action={
-            classes.length > 5 ? (
-              <Link href="/classhub/classes" className="text-sm font-bold text-brand-600 hover:underline">
-                View all
-              </Link>
-            ) : undefined
-          }
-        />
+        <SectionHeader title="Your Classes" />
         {classes.length === 0 ? (
           <EmptyState
             icon="book-open"
@@ -139,17 +129,17 @@ export default async function ClassHubPage() {
             </span>
             <span className="font-medium text-ink-900">New Class</span>
           </Link>
-          <Link href="/classhub/attendance" className="card flex items-center gap-3 p-4 transition-colors hover:bg-ink-50">
+          <Link href="/classes" className="card flex items-center gap-3 p-4 transition-colors hover:bg-ink-50">
             <span className="flex size-10 items-center justify-center rounded-xl bg-success-50 text-success-600">
-              <Icon name="check-square" size={20} />
+              <Icon name="school" size={20} />
             </span>
-            <span className="font-medium text-ink-900">Take Attendance</span>
+            <span className="font-medium text-ink-900">Browse Classes</span>
           </Link>
-          <Link href="/classhub/assignments" className="card flex items-center gap-3 p-4 transition-colors hover:bg-ink-50">
+          <Link href="/studio" className="card flex items-center gap-3 p-4 transition-colors hover:bg-ink-50">
             <span className="flex size-10 items-center justify-center rounded-xl bg-accent-50 text-accent-600">
-              <Icon name="file-text" size={20} />
+              <Icon name="video" size={20} />
             </span>
-            <span className="font-medium text-ink-900">Assignments</span>
+            <span className="font-medium text-ink-900">Teacher Studio</span>
           </Link>
         </div>
       </section>

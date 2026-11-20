@@ -89,16 +89,19 @@ export async function GET(
       .map((e) => e.student);
 
     return NextResponse.json({
-      session: classSession,
-      attendance,
-      unmarkedStudents,
-      summary: {
-        total: enrolledStudents.length,
-        marked: attendance.length,
-        present: attendance.filter((a) => a.status === "present").length,
-        late: attendance.filter((a) => a.status === "late").length,
-        absent: attendance.filter((a) => a.status === "absent").length,
-        excused: attendance.filter((a) => a.status === "excused").length,
+      ok: true,
+      data: {
+        session: classSession,
+        attendance,
+        unmarkedStudents,
+        summary: {
+          total: enrolledStudents.length,
+          marked: attendance.length,
+          present: attendance.filter((a) => a.status === "present").length,
+          late: attendance.filter((a) => a.status === "late").length,
+          absent: attendance.filter((a) => a.status === "absent").length,
+          excused: attendance.filter((a) => a.status === "excused").length,
+        },
       },
     });
   } catch (error) {
@@ -147,7 +150,7 @@ export async function POST(
       // Bulk attendance
       const data = bulkAttendanceSchema.parse(body);
       const result = await bulkMarkAttendance(sessionId, data.attendance);
-      return NextResponse.json({ attendance: result });
+      return NextResponse.json({ ok: true, data: { attendance: result } });
     } else {
       // Single attendance
       const data = markAttendanceSchema.parse(body);
@@ -159,7 +162,7 @@ export async function POST(
         deviceId: data.deviceId,
         notes: data.notes,
       });
-      return NextResponse.json({ attendance });
+      return NextResponse.json({ ok: true, data: { attendance } });
     }
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -203,7 +206,7 @@ export async function PATCH(
 
     const updated = await updateSessionStatus(sessionId, data.status);
 
-    return NextResponse.json({ session: updated });
+    return NextResponse.json({ ok: true, data: { session: updated } });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

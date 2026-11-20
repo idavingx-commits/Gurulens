@@ -8,7 +8,6 @@ import { Icon } from "@/components/ui/icons";
 import { EmptyState, SectionHeader, Stat } from "@/components/ui/primitives";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { timeAgo } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Student Dashboard" };
 
@@ -50,7 +49,7 @@ export default async function StudentDashboardPage() {
         dueAt: { gte: new Date() },
         submissions: { none: { studentId: auth.user.id } },
       },
-      include: { class: { select: { name: true } } },
+      include: { class: { select: { id: true, name: true } } },
       orderBy: { dueAt: "asc" },
       take: 5,
     }),
@@ -113,7 +112,7 @@ export default async function StudentDashboardPage() {
                 {enrollments.map((enrollment) => (
                   <Link
                     key={enrollment.id}
-                    href={`/class/${enrollment.class.id}`}
+                    href={`/classhub/class/${enrollment.class.id}`}
                     className="card flex items-center justify-between p-4 transition-shadow hover:shadow-md"
                   >
                     <div className="flex items-center gap-3">
@@ -179,7 +178,7 @@ export default async function StudentDashboardPage() {
                 {pendingAssignments.map((assignment) => (
                   <Link
                     key={assignment.id}
-                    href={`/assignment/${assignment.id}`}
+                    href={`/classhub/class/${assignment.class.id}#assignments`}
                     className="card block p-3 transition-colors hover:bg-ink-50"
                   >
                     <p className="text-sm font-bold text-ink-900">{assignment.title}</p>

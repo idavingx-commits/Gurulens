@@ -53,6 +53,8 @@ export const UPLOAD_LIMITS: Record<string, number> = {
   post_image: 10 * 1024 * 1024,
   video: 200 * 1024 * 1024,
   doc: 10 * 1024 * 1024,
+  audio: 25 * 1024 * 1024,
+  post_file: 20 * 1024 * 1024,
 };
 
 export const UPLOAD_MIME: Record<string, string[]> = {
@@ -61,6 +63,8 @@ export const UPLOAD_MIME: Record<string, string[]> = {
   post_image: ["image/png", "image/jpeg", "image/webp", "image/gif"],
   video: ["video/mp4", "video/webm"],
   doc: ["application/pdf", "image/png", "image/jpeg"],
+  audio: ["audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg", "audio/wav"],
+  post_file: ["application/pdf", "image/png", "image/jpeg", "image/webp"],
 };
 
 export const MIN_REVIEWS_FOR_RATING = 1;

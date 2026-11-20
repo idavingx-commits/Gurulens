@@ -132,6 +132,12 @@ export function sniffMime(buf: ArrayBuffer | Uint8Array): string | null {
     return "image/webp";
   const ascii4 = String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3]);
   if (ascii4 === "GIF8") return "image/gif";
+  if (ascii4 === "OggS") return "audio/ogg";
+  if (ascii4 === "RIFF" && String.fromCharCode(bytes[8], bytes[9], bytes[10], bytes[11]) === "WAVE") {
+    return "audio/wav";
+  }
+  if (ascii4 === "ID3") return "audio/mpeg";
+  if (bytes[0] === 0xff && (bytes[1]! & 0xe0) === 0xe0) return "audio/mpeg";
   const ascii8 = String.fromCharCode(
     bytes[4],
     bytes[5],
@@ -149,6 +155,20 @@ export function sniffMime(buf: ArrayBuffer | Uint8Array): string | null {
   return null;
 }
 
+/**
+ * MediaRecorder wraps audio in WebM or MP4 containers, so magic-byte sniffing
+ * cannot tell an audio-only recording from a video file. When the upload kind
+ * only accepts audio, map those containers to their audio MIME type.
+ */
+export function resolveMimeForKind(raw: ArrayBuffer | Uint8Array, allowed: string[]): string | null {
+  const sniffed = sniffMime(raw);
+  if (!sniffed) return null;
+  if (allowed.includes(sniffed)) return sniffed;
+  if (sniffed === "video/webm" && allowed.includes("audio/webm")) return "audio/webm";
+  if (sniffed === "video/mp4" && allowed.includes("audio/mp4")) return "audio/mp4";
+  return null;
+}
+
 const EXT_BY_MIME: Record<string, string> = {
   "image/png": "png",
   "image/jpeg": "jpg",
@@ -157,6 +177,11 @@ const EXT_BY_MIME: Record<string, string> = {
   "video/mp4": "mp4",
   "video/webm": "webm",
   "application/pdf": "pdf",
+  "audio/webm": "webm",
+  "audio/ogg": "ogg",
+  "audio/mp4": "m4a",
+  "audio/mpeg": "mp3",
+  "audio/wav": "wav",
 };
 
 export const CONTENT_TYPE_BY_EXT: Record<string, string> = {
@@ -167,6 +192,10 @@ export const CONTENT_TYPE_BY_EXT: Record<string, string> = {
   mp4: "video/mp4",
   webm: "video/webm",
   pdf: "application/pdf",
+  ogg: "audio/ogg",
+  m4a: "audio/mp4",
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
 };
 
 export type StoredUpload = {
@@ -216,8 +245,8 @@ export async function saveUpload(buf: Buffer, kind: string): Promise<StoredUploa
     throw new Error(`File too large. Maximum is ${Math.round(limit / (1024 * 1024))} MB.`);
   }
 
-  const sniffed = sniffMime(buf);
-  if (!sniffed || !mimeTypes.includes(sniffed)) {
+  const sniffed = resolveMimeForKind(buf, mimeTypes);
+  if (!sniffed) {
     throw new Error("Unsupported file type. Allowed: " + mimeTypes.join(", "));
   }
 
@@ -304,4 +333,8 @@ export function isImageMime(mime: string): boolean {
 
 export function isVideoMime(mime: string): boolean {
   return mime.startsWith("video/");
+}
+
+export function isAudioMime(mime: string): boolean {
+  return mime.startsWith("audio/");
 }

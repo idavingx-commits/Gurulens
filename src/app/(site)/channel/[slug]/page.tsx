@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Avatar } from "@/components/ui/avatar";
@@ -10,11 +9,28 @@ import { getAuth } from "@/lib/auth";
 import { getChannelBySlug, getChannelPosts, isFollowingChannel } from "@/lib/channels";
 import { db } from "@/lib/db";
 import { compactNumber, isExpired, timeAgo } from "@/lib/format";
-import { publicMediaUrl } from "@/lib/media";
 import { ChannelVerificationRequest } from "./channel-verification";
 import { FollowButton } from "./follow-button";
 import { CreatePostForm } from "./create-post-form";
 import { PostList } from "./post-list";
+
+function parseKeys(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((key): key is string => typeof key === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function parseWaveform(raw: string | null): number[] {
+  return parseKeys(raw)
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value))
+    .slice(0, 64)
+    .map((value) => Math.min(1, Math.max(0.05, value)));
+}
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -53,10 +69,35 @@ export default async function ChannelPage({ params }: Props) {
       membership?.status === "active" && ["owner", "admin", "manager"].includes(membership.role);
   }
 
-  const avatarUrl = channel.avatarKey ? publicMediaUrl(channel.avatarKey) : null;
-  const coverUrl = channel.coverKey ? publicMediaUrl(channel.coverKey) : null;
+  const avatarUrl = channel.avatarKey ? `/api/media/${channel.avatarKey}` : null;
+  const coverUrl = channel.coverKey ? `/api/media/${channel.coverKey}` : null;
 
   const { posts } = await getChannelPosts(channel.id, { limit: 20 });
+
+  // Voice notes historically stored a storage key; newer posts store the
+  // Media id. Resolve both so playback never points at a missing object.
+  const mediaLookup = new Set<string>();
+  for (const post of posts) {
+    for (const key of parseKeys(post.mediaKeys)) mediaLookup.add(key);
+    if (post.voiceMessage?.audioKey) mediaLookup.add(post.voiceMessage.audioKey);
+  }
+  const mediaRows =
+    mediaLookup.size > 0
+      ? await db.media.findMany({
+          where: {
+            OR: [
+              { id: { in: [...mediaLookup] } },
+              { storageKey: { in: [...mediaLookup] } },
+            ],
+          },
+          select: { id: true, storageKey: true, mimeType: true },
+        })
+      : [];
+  const mediaByKey = new Map<string, { id: string; mimeType: string }>();
+  for (const row of mediaRows) {
+    mediaByKey.set(row.id, { id: row.id, mimeType: row.mimeType });
+    mediaByKey.set(row.storageKey, { id: row.id, mimeType: row.mimeType });
+  }
 
   const myReactions = auth
     ? await db.channelReaction.findMany({
@@ -71,7 +112,10 @@ export default async function ChannelPage({ params }: Props) {
 
   const postItems = posts.map((post) => {
     const pollVotes = post.poll?.votes ?? [];
-    const optionLabels: string[] = post.poll ? JSON.parse(post.poll.options) : [];
+    const optionLabels: string[] = post.poll ? parseKeys(post.poll.options) : [];
+    const voiceMedia = post.voiceMessage
+      ? mediaByKey.get(post.voiceMessage.audioKey)
+      : undefined;
     return {
       id: post.id,
       type: post.type,
@@ -82,12 +126,20 @@ export default async function ChannelPage({ params }: Props) {
       reactionCount: post._count.reactions,
       likedByMe: likedSet.has(post.id),
       author: post.author,
-      voiceMessage: post.voiceMessage
-        ? {
-            audioKey: post.voiceMessage.audioKey,
-            durationSec: post.voiceMessage.durationSec,
-          }
-        : null,
+      voiceMessage:
+        post.voiceMessage && voiceMedia
+          ? {
+              mediaId: voiceMedia.id,
+              durationSec: post.voiceMessage.durationSec,
+              waveform: parseWaveform(post.voiceMessage.waveform),
+            }
+          : null,
+      attachments: parseKeys(post.mediaKeys).flatMap((key) => {
+        const media = mediaByKey.get(key);
+        if (!media) return [];
+        if (!media.mimeType.startsWith("image/") && media.mimeType !== "application/pdf") return [];
+        return [{ id: media.id, mimeType: media.mimeType }];
+      }),
       poll: post.poll
         ? {
             id: post.poll.id,

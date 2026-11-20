@@ -9,7 +9,6 @@ import { EmptyState, InfoNote, SectionHeader, VerifiedTick } from "@/components/
 import { getAuth } from "@/lib/auth";
 import { getTrendingChannels, searchChannels, getChannelUsage, getUserChannels } from "@/lib/channels";
 import { compactNumber } from "@/lib/format";
-import { publicMediaUrl } from "@/lib/media";
 
 export const metadata: Metadata = {
   title: "Channels",
@@ -29,7 +28,7 @@ type ChannelCardData = {
 };
 
 function ChannelCard({ channel }: { channel: ChannelCardData }) {
-  const avatarUrl = channel.avatarKey ? publicMediaUrl(channel.avatarKey) : null;
+  const avatarUrl = channel.avatarKey ? `/api/media/${channel.avatarKey}` : null;
   const followers = channel._count?.followers ?? channel.followerCount ?? 0;
   const posts = channel._count?.posts ?? channel.postCount ?? 0;
 

@@ -516,6 +516,10 @@ export async function submitAssignment(data: {
         attachments: data.attachments ? JSON.stringify(data.attachments) : null,
         status: isLate ? "late" : "submitted",
         submittedAt: new Date(),
+        // A resubmission must be reviewed again, so clear the previous grade.
+        score: null,
+        feedback: null,
+        gradedAt: null,
       },
     });
   }
@@ -596,8 +600,7 @@ export async function getClassStats(classId: string) {
 }
 
 // Get teacher's dashboard overview
-export async function getTeacherDashboard(teacherId: string) {
-  const [classes, totalStudents, upcomingSessions, pendingSubmissions] = await Promise.all([
+export async function getTeacherDashboard(teacherId: string) {  const [classes, totalStudents, upcomingSessions, pendingSubmissions] = await Promise.all([
     db.class.count({ where: { teacherId, status: "active" } }),
     db.classEnrollment.count({
       where: { class: { teacherId }, status: "active" },
@@ -627,5 +630,60 @@ export async function getTeacherDashboard(teacherId: string) {
     totalStudents,
     upcomingSessions,
     pendingSubmissions,
+  };
+}
+
+// Browse classes that are open for enrollment
+export async function getOpenClasses(options: { query?: string; viewerId?: string | null } = {}) {
+  const query = options.query?.trim();
+  const where: Prisma.ClassWhereInput = {
+    status: "active",
+    teacher: { status: "active" },
+    ...(query
+      ? {
+          OR: [
+            { name: { contains: query, mode: "insensitive" } },
+            { description: { contains: query, mode: "insensitive" } },
+            { teacher: { name: { contains: query, mode: "insensitive" } } },
+          ],
+        }
+      : {}),
+  };
+
+  const [classes, enrollments] = await Promise.all([
+    db.class.findMany({
+      where,
+      include: {
+        teacher: {
+          select: {
+            id: true,
+            name: true,
+            avatarKey: true,
+            teacherProfile: { select: { handle: true, verifiedStatus: true } },
+          },
+        },
+        organization: { select: { id: true, name: true, slug: true } },
+        _count: {
+          select: {
+            enrollments: { where: { status: "active" } },
+            assignments: true,
+            sessions: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 60,
+    }),
+    options.viewerId
+      ? db.classEnrollment.findMany({
+          where: { studentId: options.viewerId, status: "active" },
+          select: { classId: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  return {
+    classes,
+    enrolledClassIds: new Set(enrollments.map((enrollment) => enrollment.classId)),
   };
 }

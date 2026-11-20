@@ -12,6 +12,7 @@ import {
   createPoll,
 } from "@/lib/channels";
 import { checkPermission } from "@/lib/roles";
+import { db } from "@/lib/db";
 import { z } from "zod";
 
 const createPostSchema = z.object({
@@ -101,38 +102,91 @@ export async function POST(
     const body = await request.json();
     const data = createPostSchema.parse(body);
 
+    // Never trust media ids from the browser: every attachment must belong to
+    // the author and use a channel-safe upload kind.
+    const mediaKeys = [...new Set(data.mediaKeys ?? [])];
+    if (mediaKeys.length > 4) {
+      return NextResponse.json({ error: "You can attach up to 4 files." }, { status: 400 });
+    }
+    if (mediaKeys.length > 0) {
+      const owned = await db.media.findMany({
+        where: {
+          id: { in: mediaKeys },
+          ownerId: session.user.id,
+          kind: { in: ["post_image", "post_file", "video"] },
+        },
+        select: { id: true },
+      });
+      if (owned.length !== mediaKeys.length) {
+        return NextResponse.json({ error: "One or more attachments are invalid." }, { status: 400 });
+      }
+    }
+
     let post;
 
     // Handle different post types
-    if (data.type === "audio" && data.audioKey && data.durationSec) {
-      // Voice message
+    if (data.type === "audio") {
+      if (!data.audioKey) {
+        return NextResponse.json({ error: "A voice recording is required." }, { status: 400 });
+      }
+      const duration = data.durationSec ?? 0;
+      if (duration <= 0 || duration > 180) {
+        return NextResponse.json({ error: "Voice notes must be under 3 minutes." }, { status: 400 });
+      }
+      const audio = await db.media.findFirst({
+        where: { id: data.audioKey, ownerId: session.user.id, kind: "audio" },
+        select: { id: true },
+      });
+      if (!audio) {
+        return NextResponse.json({ error: "Voice recording not found." }, { status: 400 });
+      }
+
       post = await createVoiceMessage({
         channelId: channel.id,
         authorId: session.user.id,
-        audioKey: data.audioKey,
-        durationSec: data.durationSec,
-        waveform: data.waveform,
+        audioKey: audio.id,
+        durationSec: Math.round(duration),
+        waveform: data.waveform
+          ?.slice(0, 64)
+          .map((value) => Math.min(1, Math.max(0, value))),
         content: data.content,
       });
-    } else if (data.type === "poll" && data.pollQuestion && data.pollOptions) {
-      // Poll
+    } else if (data.type === "poll") {
+      const options = (data.pollOptions ?? []).map((option) => option.trim()).filter(Boolean);
+      const question = data.pollQuestion?.trim() ?? "";
+      if (question.length < 3 || options.length < 2 || options.length > 6) {
+        return NextResponse.json(
+          { error: "Polls need a question and 2–6 options." },
+          { status: 400 },
+        );
+      }
+      if (new Set(options).size !== options.length) {
+        return NextResponse.json({ error: "Poll options must be unique." }, { status: 400 });
+      }
+
       post = await createPoll({
         channelId: channel.id,
         authorId: session.user.id,
-        question: data.pollQuestion,
-        options: data.pollOptions,
+        question,
+        options,
         allowMultiple: data.pollAllowMultiple,
         endsAt: data.pollEndsAt ? new Date(data.pollEndsAt) : undefined,
         content: data.content,
       });
     } else {
-      // Regular post
+      if (!data.content?.trim() && mediaKeys.length === 0) {
+        return NextResponse.json(
+          { error: "Write something or attach a file before posting." },
+          { status: 400 },
+        );
+      }
+
       post = await createChannelPost({
         channelId: channel.id,
         authorId: session.user.id,
         type: data.type,
-        content: data.content,
-        mediaKeys: data.mediaKeys,
+        content: data.content?.trim() || undefined,
+        mediaKeys: mediaKeys.length > 0 ? mediaKeys : undefined,
         isPinned: data.isPinned,
         isUrgent: data.isUrgent,
         scheduledAt: data.scheduledAt ? new Date(data.scheduledAt) : undefined,

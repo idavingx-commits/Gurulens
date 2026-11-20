@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icons";
 import { Field, Input, Select } from "@/components/ui/input";
-import { InfoNote, SectionHeader } from "@/components/ui/primitives";
+import { SectionHeader } from "@/components/ui/primitives";
 import { apiFetch, ClientApiError } from "@/lib/client";
 
 type Device = { id: string; name: string; deviceCode: string };

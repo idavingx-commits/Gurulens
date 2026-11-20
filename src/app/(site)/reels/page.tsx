@@ -55,10 +55,10 @@ export default async function ReelsPage() {
   return (
     <div className="relative">
       {/* Back button overlay */}
-      <div className="fixed top-4 left-4 z-50 flex items-center gap-3">
+      <div className="fixed top-[calc(env(safe-area-inset-top,0px)+0.75rem)] left-3 z-[60] flex items-center gap-2.5 lg:top-20 lg:left-4 lg:gap-3">
         <Link
           href="/"
-          className="flex size-10 items-center justify-center rounded-full bg-black/30 text-white backdrop-blur-md transition-colors hover:bg-black/50"
+          className="flex size-10 items-center justify-center rounded-full bg-black/40 text-white shadow-lg backdrop-blur-md transition-colors hover:bg-black/60"
           aria-label="Back to home"
         >
           <Icon name="arrow-left" size={20} />

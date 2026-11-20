@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { LatestFromTeachers } from "@/components/home/latest-from-teachers";
 import { SearchBar } from "@/components/layout/SearchBar";
-import { PostCard } from "@/components/post/PostCard";
 import { TeacherCard } from "@/components/teacher/TeacherCard";
 import { Avatar } from "@/components/ui/avatar";
 import { CountUp } from "@/components/ui/count-up";
@@ -115,7 +115,7 @@ export default async function HomePage() {
     getTeacherCards({ sort: "trust", limit: 8 }),
     getPlatformStats(),
     getSubjectCounts(),
-    getRecentPosts(3, user?.id ?? null),
+    getRecentPosts(5, user?.id ?? null),
     getTopReviews(6),
   ]);
 
@@ -674,24 +674,9 @@ export default async function HomePage() {
       ) : null}
 
       {/* ============================================================ */}
-      {/* LATEST POSTS                                                 */}
+      {/* LATEST FROM TEACHERS - Editorial layout                       */}
       {/* ============================================================ */}
-      {recentPosts.length > 0 ? (
-        <section className="relative mx-auto max-w-6xl px-4 py-16 sm:px-6">
-          <div className="mb-8">
-            <h2 className="text-3xl font-black tracking-tight text-ink-900">Latest from Teachers</h2>
-            <p className="mt-2 text-[14px] text-ink-500">
-              Lessons, announcements, reels and discussions.
-            </p>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {recentPosts.map((p) => (
-              <PostCard key={p.id} post={p} />
-            ))}
-          </div>
-        </section>
-      ) : null}
+      <LatestFromTeachers posts={recentPosts} isAuthenticated={Boolean(user)} />
 
       {/* ============================================================ */}
       {/* FINAL CTA                                                    */}

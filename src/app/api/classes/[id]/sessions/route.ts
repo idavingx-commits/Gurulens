@@ -4,14 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import {
-  createClassSession,
-  getClassSessions,
-  updateSessionStatus,
-  getSessionAttendance,
-  markAttendance,
-  bulkMarkAttendance,
-} from "@/lib/classhub";
+import { createClassSession, getClassSessions } from "@/lib/classhub";
 import { checkPermission } from "@/lib/roles";
 import { z } from "zod";
 
@@ -20,16 +13,6 @@ const createSessionSchema = z.object({
   duration: z.number().int().positive(),
   topic: z.string().optional(),
   notes: z.string().optional(),
-});
-
-const markAttendanceSchema = z.object({
-  studentId: z.string(),
-  status: z.enum(["present", "absent", "late", "excused"]),
-  notes: z.string().optional(),
-});
-
-const bulkAttendanceSchema = z.object({
-  attendance: z.array(markAttendanceSchema),
 });
 
 // GET: List class sessions
@@ -64,7 +47,7 @@ export async function GET(
       to: to ? new Date(to) : undefined,
     });
 
-    return NextResponse.json({ sessions });
+    return NextResponse.json({ ok: true, data: { sessions } });
   } catch (error) {
     console.error("Error in GET /api/classes/[id]/sessions:", error);
     return NextResponse.json(
@@ -106,7 +89,7 @@ export async function POST(
       notes: data.notes,
     });
 
-    return NextResponse.json({ session: classSession }, { status: 201 });
+    return NextResponse.json({ ok: true, data: { session: classSession } }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

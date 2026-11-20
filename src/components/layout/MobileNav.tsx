@@ -11,6 +11,7 @@ export function MobileNav({ role }: { role: string | null }) {
 
   const items: Array<{ href: string; label: string; icon: string }> = [
     { href: "/", label: "Home", icon: "home" },
+    { href: "/classes", label: "Classes", icon: "school" },
     { href: "/explore", label: "Explore", icon: "search" },
     { href: "/reels", label: "Reels", icon: "film" },
   ];
@@ -21,13 +22,9 @@ export function MobileNav({ role }: { role: string | null }) {
     items.push({ href: "/admin", label: "Admin", icon: "shield" });
   } else if (role) {
     items.push({ href: "/feed", label: "Feed", icon: "compass" });
+  } else {
+    items.push({ href: "/login", label: "Log in", icon: "user" });
   }
-
-  items.push(
-    role
-      ? { href: "/dashboard", label: "Me", icon: "user" }
-      : { href: "/login", label: "Log in", icon: "user" },
-  );
 
   return (
     <nav

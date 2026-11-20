@@ -9,7 +9,6 @@ import {
   getUserOrganizations,
   getOrgStats,
 } from "@/lib/organizations";
-import { checkPermission } from "@/lib/roles";
 import { z } from "zod";
 
 const createOrgSchema = z.object({
@@ -31,7 +30,7 @@ const createOrgSchema = z.object({
 });
 
 // GET: List user's organizations
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await getSession();
     if (!session) {

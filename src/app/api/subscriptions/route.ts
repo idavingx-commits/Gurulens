@@ -11,7 +11,6 @@ import {
   createSubscription,
   cancelSubscription,
 } from "@/lib/subscriptions";
-import { z } from "zod";
 
 // GET: Get plans and user's subscription
 export async function GET(request: NextRequest) {

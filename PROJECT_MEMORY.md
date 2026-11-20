@@ -42,7 +42,7 @@ Key dirs: `src/app/(site)` public pages, `src/app/(auth)` login/register, `src/a
 - Standard verification before declaring anything done:
   1. `npm run typecheck` (= `tsc --noEmit` style, exit 0)
   2. `npm run lint` (exit 0, zero warnings)
-  3. `npm test` (61 tests pass)
+  3. `npm test` (60 tests pass)
   4. `npm run build` (exit 0)
   5. Render check with curl, e.g.:
      `$st=(& curl.exe -s -o "$tmp\page.html" -w "%{http_code}" "http://localhost:3000/path") -join ""`
@@ -90,14 +90,14 @@ Production currently has exactly these two accounts and **zero teacher profiles*
 - **Quote styling**: `.quote-cinematic` adds decorative large opening quote via ::before.
 - **Stagger utility**: `.stagger` applies 50ms animation-delay per child (up to 8).
 - **Components (key APIs)**:
-  - `Icon { name, size, className, strokeWidth }` — unknown names fall back to `help`. There is NO `megaphone`. `star` is pre-filled (`fill="currentColor"`); `star-outline` is the outline. Known set: search, home, compass, star, star-outline, check, x, user, users, play, pause, video, film, bell, sliders, menu, heart, bookmark, share, flag, eye, upload, plus, pencil, trash, logout, shield, shield-check, chart, book, clock, sparkles, filter, external, image, camera, info, alert, location, mail, phone, message, help, globe, lock, key, refresh, more, link, crown, zap, fire, send, volume, mute, copy, download, grid, list, award, target, chevron-down/up/left/right, arrow-right, arrow-left, rotate-ccw, panel-left.
+  - `Icon { name, size, className, strokeWidth }` — unknown names fall back to `help`. There is NO `megaphone`. `star` is pre-filled (`fill="currentColor"`); `star-outline` is the outline. Known set: search, home, compass, star, star-outline, check, x, user, users, play, pause, video, film, bell, sliders, menu, heart, bookmark, share, flag, eye, upload, plus, pencil, trash, logout, shield, shield-check, chart, book, clock, sparkles, filter, external, image, camera, info, alert, location, mail, phone, message, help, globe, lock, key, refresh, more, link, crown, zap, fire, send, volume, mute, copy, download, grid, list, award, target, chevron-down/up/left/right, arrow-right, arrow-left, rotate-ccw, panel-left, school, clipboard, inbox, file-text, calendar, radio, settings, smartphone, wifi/wifi-off, credit-card, check-circle, user-plus, loader. Full set lives in `src/components/ui/icons.tsx`; unknown names fall back to `help`.
   - `Avatar { name, src, size ("sm"…), className, ring }` — pass `src={key ? `/api/media/${key}` : null}`.
   - `Button`/`LinkButton` variants `primary | secondary | outline | ghost | danger | accent | success`, sizes `xs | sm | md | lg`.
   - `SectionHeader { title: string, subtitle?: ReactNode, action?: ReactNode }` — subtitle accepts JSX (used for styled Sinhala spans).
   - `VerifiedTick { className, title?, live? }` — scalloped gradient seal, white check draw-in, pop/shine; `live` adds breathing glow + looping shine (teacher profile header uses it).
   - `CountUp { value, className?, duration? }` — client component; SSR renders final value, animates 0→value on first view (no sync setState in effect).
   - `StarRating { value, onChange?, size?, readOnly? }` (renders buttons), `Field`, `Input`, `Textarea`, `Select`, `Checkbox`, `Modal`, `ConfirmDialog`, `Switch`, `Chip`, `InfoNote`, `Skeleton`, `Spinner`, `Toast`.
-- **Landing page** (`src/app/(site)/page.tsx`): floating blobs layer, hero (badge → headline w/ shimmer span → Sinhala subtitle → SearchBar → avatar stack + stats strip → subject chips), stats grid (CountUp), "Two ways in" cards (student brand-gradient + teacher dark-ink w/ `teacherCta`), trust note, top teachers, popular subjects, latest posts, "Loved by students" review wall (real 5-star published reviews, masonry columns), how-it-works w/ ghost numbers, teacher CTA, FAQ (`<details>` accordions). Consts: `POPULAR_SUBJECTS`, `HOW_IT_WORKS`, `FAQS`, `teacherCta` (isEducator → `/studio` else `/register/teacher`).
+- **Landing page** (`src/app/(site)/page.tsx`): floating blobs layer, hero (badge → headline w/ shimmer span → Sinhala subtitle → SearchBar → avatar stack + stats strip → subject chips), stats grid (CountUp), "Two ways in" cards (student brand-gradient + teacher dark-ink w/ `teacherCta`), trust note, top teachers, popular subjects, **"Latest from Teachers"** editorial section (`latest-from-teachers.tsx`: featured post + compact rail + fill/empty state), "Loved by students" review wall (real 5-star published reviews, masonry columns), how-it-works w/ ghost numbers, teacher CTA, FAQ (`<details>` accordions). Consts: `POPULAR_SUBJECTS`, `HOW_IT_WORKS`, `FAQS`, `teacherCta` (isEducator → `/studio` else `/register/teacher`).
 - **Auth pages**: split-screen shell (`(auth)/layout.tsx`) — sticky brand panel left (badge, shimmer headline, Sinhala sub, CountUp stats, 3 Sinhala bullets, live top-review quote card), form column right (34rem); login/student/teacher cards share the gradient top-bar + icon-chip header pattern; register chooser = two gradient cards mirroring landing. Forms use 2-col field grids (`sm:grid-cols-2`) for password+DOB, class-format+experience, etc.
 
 ## 8. Backlog / ideas (not built yet)
@@ -108,6 +108,36 @@ Production currently has exactly these two accounts and **zero teacher profiles*
 - Full-page visual review on the user's ultra-wide monitor (agent can't see images).
 
 ## 9. Changelog (newest first)
+
+### 2026-11-21 — Ecosystem Upgrade Phase 5: Home editorial, voice/media, ClassHub UI & mobile Reels
+
+**"Latest from Teachers" — unique editorial home section:**
+- New `src/components/home/latest-from-teachers.tsx`: one featured post + compact rail, "Teacher Pulse" live badge, type-aware gradient tiles (`post/announcement/lesson/reel/video`), real like/comment/view counts, `/api/media/<id>` covers, and a dashed "discover more" fill card when the rail is short.
+- Auth-aware CTA: signed-in → `/feed`, guests → `/explore`; `EmptyLatest` state for a fresh platform. Home now calls `getRecentPosts(5, viewerId)` and no longer renders the old `PostCard` grid.
+- Verified rendered HTML: section present, guest CTA, zero console errors, zero horizontal overflow.
+
+**Channel media + voice recording:**
+- Upload kinds `audio` and `post_file`; magic-byte audio sniffing (`audio/webm`, `audio/mp4`), codec parameters stripped before presign/PUT, audio-only containers accepted by `/api/upload/complete`.
+- Composer (`channel/[slug]/create-post-form.tsx`): Update / Poll / Voice modes, MediaRecorder with timer, preview, re-record, 180 s cap, waveform extraction, and up to 4 image/PDF attachments (10 MB images, 20 MB PDFs).
+- Feed (`post-list.tsx`): `VoicePlayer` waveform playback, image galleries, PDF/file attachment cards, share/copy, compact counts. Channel page resolves media by `Media.id` **or** legacy storage key; voice messages store the Media id in `audioKey`.
+- `POST /api/channels/[slug]/posts` validates media ownership/kind, voice duration and poll options.
+
+**ClassHub enrollment + assignments:**
+- `/classes` public browse page: search, mode chips, teacher, schedule, subject, seats/fill bar, fee and enroll CTA.
+- `/classhub/class/[id]` detail page: hero, schedule/location/fee, stats, teacher card, sessions, enrolled students (manager), "what you get" (student), assignment section.
+- `EnrollButton` (`src/components/classhub/enroll-button.tsx`): optimistic self-enroll/self-withdraw, login redirect, pending/error states; API permits self-enroll while keeping teacher/admin management and own-class/capacity guards.
+- Assignment APIs: `GET/POST /api/classes/[id]/assignments`, `POST /api/assignments/[id]/submit`, `PATCH /api/assignments/[id]/submissions/[submissionId]`; UI supports teacher create + score/feedback grading and student text + PDF/image submissions (max 3 attachments). Resubmitting clears the previous grade so it must be reviewed again.
+- Student dashboard links now target `/classhub/class/<id>` (classes and pending assignments) instead of the removed `/class` and `/assignment` paths.
+
+**Mobile Reels:**
+- `ReelViewer` is a full-screen `100dvh` fixed overlay on mobile with safe-area rails and z-50, snap scrolling, IntersectionObserver index tracking, tap play/pause, seek bar, share fallback and stable video refs; desktop keeps the in-page `calc(100dvh-4rem)` layout.
+
+**API/UI consistency:**
+- Class routes now return the standard `{ ok, data }` envelope; `apiFetch` accepts both the envelope and legacy plain JSON so older routes keep working.
+- Added missing icons (`school`, `clipboard`, `inbox`, `settings`, `calendar`, `file-text`, `radio`, `smartphone`, `wifi`, `credit-card`, `check-circle`, `user-plus`, `loader`, etc.).
+- Cleaned the last 13 ESLint warnings → **0 warnings, 0 errors**.
+
+**Verification:** typecheck pass, lint clean, 60/60 tests, Next build 77 routes, `cf:build` pass, deployed Worker version `50f21736-f410-499b-92e2-dee6a5c03efc` (workers.dev: `gurulens.idavingx.workers.dev`). Smoke: `/`, `/classes`, `/reels`, `/channels`, `/explore` → 200; `/classhub`, `/dashboard/student` → 307 for guests (expected). Live data currently has no active classes, so `/classes` shows its empty state until teachers publish classes.
 
 ### 2026-11-20 — Ecosystem Upgrade Phase 4: Campus, Verification Panels & UI Consistency
 

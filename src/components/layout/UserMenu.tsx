@@ -79,6 +79,9 @@ export function UserMenu({ user }: { user: HeaderUser }) {
             </MenuItem>
           </>
         ) : null}
+        <MenuItem icon="school" href="/classes">
+          Browse Classes
+        </MenuItem>
         <MenuItem icon="grid" href="/dashboard">
           My Dashboard
         </MenuItem>

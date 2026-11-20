@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { getClassById, enrollStudent, withdrawStudent } from "@/lib/classhub";
+import { enrollStudent, withdrawStudent } from "@/lib/classhub";
 import { checkPermission } from "@/lib/roles";
 import { db } from "@/lib/db";
 import { z } from "zod";
@@ -56,7 +56,7 @@ export async function GET(
       orderBy: { enrolledAt: "desc" },
     });
 
-    return NextResponse.json({ enrollments });
+    return NextResponse.json({ ok: true, data: { enrollments } });
   } catch (error) {
     console.error("Error in GET /api/classes/[id]/enrollments:", error);
     return NextResponse.json(
@@ -79,20 +79,34 @@ export async function POST(
 
     const { id } = await params;
 
-    // Check permission
-    const canManage = await checkPermission(session.user.id, "class:manage_students", {
-      classId: id,
-    });
-    if (!canManage) {
-      return NextResponse.json({ error: "Permission denied" }, { status: 403 });
-    }
-
     const body = await request.json();
     const data = enrollSchema.parse(body);
 
+    // A student may enroll themselves; teachers and admins can enroll anyone.
+    const isSelf = data.studentId === session.user.id;
+    if (isSelf) {
+      const cls = await db.class.findUnique({
+        where: { id },
+        select: { status: true, teacherId: true },
+      });
+      if (!cls || cls.status !== "active") {
+        return NextResponse.json({ error: "This class is not open for enrollment" }, { status: 400 });
+      }
+      if (cls.teacherId === session.user.id) {
+        return NextResponse.json({ error: "You cannot enroll in your own class" }, { status: 400 });
+      }
+    } else {
+      const canManage = await checkPermission(session.user.id, "class:manage_students", {
+        classId: id,
+      });
+      if (!canManage) {
+        return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+      }
+    }
+
     const enrollment = await enrollStudent(id, data.studentId, data.notes);
 
-    return NextResponse.json({ enrollment }, { status: 201 });
+    return NextResponse.json({ ok: true, data: { enrollment } }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -131,14 +145,6 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Check permission
-    const canManage = await checkPermission(session.user.id, "class:manage_students", {
-      classId: id,
-    });
-    if (!canManage) {
-      return NextResponse.json({ error: "Permission denied" }, { status: 403 });
-    }
-
     const { searchParams } = new URL(request.url);
     const studentId = searchParams.get("studentId");
 
@@ -149,9 +155,19 @@ export async function DELETE(
       );
     }
 
+    // Students can leave a class themselves; staff can remove anyone.
+    if (studentId !== session.user.id) {
+      const canManage = await checkPermission(session.user.id, "class:manage_students", {
+        classId: id,
+      });
+      if (!canManage) {
+        return NextResponse.json({ error: "Permission denied" }, { status: 403 });
+      }
+    }
+
     await withdrawStudent(id, studentId);
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ ok: true, data: { success: true } });
   } catch (error) {
     console.error("Error in DELETE /api/classes/[id]/enrollments:", error);
     return NextResponse.json(

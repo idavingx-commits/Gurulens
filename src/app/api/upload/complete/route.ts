@@ -2,7 +2,7 @@ import { type NextRequest } from "next/server";
 import { z } from "zod";
 
 import { ApiError, ok, parseBody, requireAuth, route } from "@/lib/api";
-import { getObject, headObject, normalizeKind, sniffMime } from "@/lib/media";
+import { getObject, headObject, normalizeKind, resolveMimeForKind } from "@/lib/media";
 import { finalizeUpload, isStorageKeyForKind, isUploadKind } from "@/lib/upload-record";
 
 export const runtime = "nodejs";
@@ -48,8 +48,8 @@ export const POST = route(async (req: NextRequest) => {
     throw new ApiError(400, "Could not verify the uploaded file.", "probe_failed");
   }
 
-  const sniffed = sniffMime(await probe.arrayBuffer());
-  if (!sniffed || !mimeTypes.includes(sniffed)) {
+  const sniffed = resolveMimeForKind(await probe.arrayBuffer(), mimeTypes);
+  if (!sniffed) {
     throw new ApiError(
       400,
       "Unsupported file type. Allowed: " + mimeTypes.join(", "),

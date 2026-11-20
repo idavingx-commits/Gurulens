@@ -30,22 +30,24 @@ interface ReelViewerProps {
   reels: ReelData[];
 }
 
+/** Distance from the bottom safe area for the action rail. */
+const RAIL_BOTTOM = "calc(env(safe-area-inset-bottom, 0px) + 5.5rem)";
+
 export function ReelViewer({ reels }: ReelViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<Map<number, HTMLVideoElement>>(new Map());
+  const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
 
-  // Handle scroll snap to detect current reel
-  const handleScroll = useCallback(() => {
-    if (!containerRef.current) return;
-    const container = containerRef.current;
-    const scrollTop = container.scrollTop;
-    const height = container.clientHeight;
-    const newIndex = Math.round(scrollTop / height);
-    if (newIndex !== currentIndex && newIndex >= 0 && newIndex < reels.length) {
-      setCurrentIndex(newIndex);
-    }
-  }, [currentIndex, reels.length]);
+  const registerVideo = useCallback((index: number, el: HTMLVideoElement | null) => {
+    if (el) videoRefs.current.set(index, el);
+    else videoRefs.current.delete(index);
+  }, []);
+
+  const registerItem = useCallback((index: number, el: HTMLDivElement | null) => {
+    if (el) itemRefs.current.set(index, el);
+    else itemRefs.current.delete(index);
+  }, []);
 
   // Scroll to reel helper
   const scrollToReel = useCallback((index: number) => {
@@ -54,26 +56,53 @@ export function ReelViewer({ reels }: ReelViewerProps) {
     containerRef.current.scrollTo({ top: index * height, behavior: "smooth" });
   }, []);
 
+  // Detect the visible reel with an observer so dynamic viewport changes
+  // (mobile browser chrome, rotation) do not throw the index off like
+  // scrollTop / clientHeight arithmetic does.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const index = Number((entry.target as HTMLElement).dataset.reelIndex);
+          if (Number.isInteger(index)) setCurrentIndex(index);
+        }
+      },
+      { root: container, threshold: 0.55 },
+    );
+
+    itemRefs.current.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [reels.length]);
+
   // Auto-play current video, pause others
   useEffect(() => {
     videoRefs.current.forEach((video, index) => {
       if (index === currentIndex) {
-        video.play().catch(() => {});
+        video.muted = true;
+        void video.play().catch(() => {});
       } else {
         video.pause();
-        video.currentTime = 0;
+        try {
+          video.currentTime = 0;
+        } catch {
+          // Metadata may not be loaded yet.
+        }
       }
     });
   }, [currentIndex]);
 
   // Keyboard navigation
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "ArrowDown" || e.key === "j") {
-        e.preventDefault();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "ArrowDown" || event.key === "j") {
+        event.preventDefault();
         scrollToReel(Math.min(currentIndex + 1, reels.length - 1));
-      } else if (e.key === "ArrowUp" || e.key === "k") {
-        e.preventDefault();
+      } else if (event.key === "ArrowUp" || event.key === "k") {
+        event.preventDefault();
         scrollToReel(Math.max(currentIndex - 1, 0));
       }
     };
@@ -83,8 +112,8 @@ export function ReelViewer({ reels }: ReelViewerProps) {
 
   if (reels.length === 0) {
     return (
-      <div className="flex h-screen items-center justify-center bg-black text-white">
-        <div className="text-center">
+      <div className="flex h-[100dvh] items-center justify-center bg-black text-white lg:h-[calc(100dvh-4rem)]">
+        <div className="px-6 text-center">
           <Icon name="film" size={48} className="mx-auto mb-4 opacity-30" />
           <p className="text-lg font-semibold">No reels yet</p>
           <p className="mt-1 text-sm text-white/60">Check back soon!</p>
@@ -95,29 +124,32 @@ export function ReelViewer({ reels }: ReelViewerProps) {
 
   return (
     <div
-      ref={containerRef}
-      onScroll={handleScroll}
-      className="h-screen w-full snap-y snap-mandatory overflow-y-scroll bg-black"
-      style={{ scrollSnapType: "y mandatory" }}
+      className="fixed inset-0 z-50 bg-black lg:relative lg:inset-auto lg:z-auto"
+      style={{ height: "100dvh" }}
     >
-      {reels.map((reel, index) => (
-        <ReelItem
-          key={reel.id}
-          reel={reel}
-          onVideoRef={(el) => {
-            if (el) videoRefs.current.set(index, el);
-            else videoRefs.current.delete(index);
-          }}
-        />
-      ))}
+      <div
+        ref={containerRef}
+        className="h-full w-full snap-y snap-mandatory overflow-y-scroll overscroll-y-contain bg-black [-webkit-overflow-scrolling:touch]"
+      >
+        {reels.map((reel, index) => (
+          <ReelItem
+            key={reel.id}
+            reel={reel}
+            index={index}
+            isActive={index === currentIndex}
+            registerItem={registerItem}
+            registerVideo={registerVideo}
+          />
+        ))}
+      </div>
 
-      {/* Navigation indicators */}
-      <div className="fixed top-1/2 right-4 z-50 hidden -translate-y-1/2 flex-col gap-1.5 lg:flex">
+      {/* Navigation indicators - desktop only */}
+      <div className="pointer-events-none absolute top-1/2 right-4 z-50 hidden -translate-y-1/2 flex-col gap-1.5 lg:flex">
         {reels.map((_, i) => (
           <button
             key={i}
             onClick={() => scrollToReel(i)}
-            className={`size-2 rounded-full transition-all ${
+            className={`pointer-events-auto size-2 rounded-full transition-all ${
               i === currentIndex ? "scale-125 bg-white" : "bg-white/30 hover:bg-white/50"
             }`}
             aria-label={`Go to reel ${i + 1}`}
@@ -126,21 +158,30 @@ export function ReelViewer({ reels }: ReelViewerProps) {
       </div>
 
       {/* Scroll hint */}
-      {currentIndex === 0 && (
-        <div className="fixed bottom-8 left-1/2 z-50 -translate-x-1/2 animate-bounce text-white/60">
-          <Icon name="chevron-down" size={28} />
+      {currentIndex === 0 && reels.length > 1 ? (
+        <div
+          className="pointer-events-none absolute left-1/2 z-50 -translate-x-1/2 animate-bounce text-white/60"
+          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 1.25rem)" }}
+        >
+          <Icon name="chevron-down" size={26} />
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
 
 function ReelItem({
   reel,
-  onVideoRef,
+  index,
+  isActive,
+  registerItem,
+  registerVideo,
 }: {
   reel: ReelData;
-  onVideoRef: (el: HTMLVideoElement | null) => void;
+  index: number;
+  isActive: boolean;
+  registerItem: (index: number, el: HTMLDivElement | null) => void;
+  registerVideo: (index: number, el: HTMLVideoElement | null) => void;
 }) {
   const [isLiked, setIsLiked] = useState(reel.isLiked);
   const [isSaved, setIsSaved] = useState(reel.isSaved);
@@ -148,17 +189,18 @@ function ReelItem({
   const [isMuted, setIsMuted] = useState(true);
   const [isPlaying, setIsPlaying] = useState(true);
   const [progress, setProgress] = useState(0);
+  const [shared, setShared] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    onVideoRef(videoRef.current);
-    return () => onVideoRef(null);
-  }, [onVideoRef]);
+    registerVideo(index, videoRef.current);
+    return () => registerVideo(index, null);
+  }, [index, registerVideo]);
 
   const togglePlay = () => {
     if (!videoRef.current) return;
     if (videoRef.current.paused) {
-      videoRef.current.play();
+      void videoRef.current.play().catch(() => {});
       setIsPlaying(true);
     } else {
       videoRef.current.pause();
@@ -174,19 +216,20 @@ function ReelItem({
 
   const handleTimeUpdate = () => {
     if (!videoRef.current) return;
-    const pct = (videoRef.current.currentTime / videoRef.current.duration) * 100;
-    setProgress(isNaN(pct) ? 0 : pct);
+    const video = videoRef.current;
+    if (!video.duration || Number.isNaN(video.duration)) return;
+    setProgress((video.currentTime / video.duration) * 100);
   };
 
   const handleLike = async () => {
     const newLiked = !isLiked;
     setIsLiked(newLiked);
-    setLikeCount((c) => c + (newLiked ? 1 : -1));
+    setLikeCount((c) => Math.max(0, c + (newLiked ? 1 : -1)));
     try {
       await apiFetch(`/api/posts/${reel.id}/like`, { method: "POST" });
     } catch {
       setIsLiked(!newLiked);
-      setLikeCount((c) => c + (newLiked ? -1 : 1));
+      setLikeCount((c) => Math.max(0, c + (newLiked ? -1 : 1)));
     }
   };
 
@@ -200,8 +243,33 @@ function ReelItem({
     }
   };
 
+  const handleShare = async () => {
+    const url = `${window.location.origin}/post/${reel.id}`;
+    if (typeof navigator.share === "function") {
+      try {
+        await navigator.share({ title: reel.text || "GuruLens reel", url });
+        return;
+      } catch {
+        // User dismissed the share sheet.
+      }
+    }
+    if (navigator.clipboard) {
+      try {
+        await navigator.clipboard.writeText(url);
+        setShared(true);
+        window.setTimeout(() => setShared(false), 1800);
+      } catch {
+        // Clipboard blocked.
+      }
+    }
+  };
+
   return (
-    <div className="relative flex h-screen w-full snap-start snap-always items-center justify-center">
+    <div
+      ref={(el) => registerItem(index, el)}
+      data-reel-index={index}
+      className="relative flex h-full w-full snap-start snap-always items-center justify-center overflow-hidden"
+    >
       {/* Video */}
       <video
         ref={videoRef}
@@ -209,160 +277,188 @@ function ReelItem({
         loop
         muted={isMuted}
         playsInline
+        preload={isActive ? "auto" : "metadata"}
         onClick={togglePlay}
+        onPlay={() => setIsPlaying(true)}
+        onPause={() => setIsPlaying(false)}
         onTimeUpdate={handleTimeUpdate}
         className="h-full w-full cursor-pointer object-contain"
       />
 
       {/* Play/Pause overlay */}
-      {!isPlaying && (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-          <div className="flex size-20 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm">
-            <Icon name="play" size={40} />
-          </div>
-        </div>
-      )}
+      {!isPlaying ? (
+        <button
+          type="button"
+          onClick={togglePlay}
+          aria-label="Play reel"
+          className="absolute inset-0 flex items-center justify-center"
+        >
+          <span className="flex size-16 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur-sm sm:size-20">
+            <Icon name="play" size={32} />
+          </span>
+        </button>
+      ) : null}
 
       {/* Progress bar */}
-      <div className="absolute top-0 right-0 left-0 h-1 bg-white/20">
-        <div
-          className="h-full bg-gradient-to-r from-brand-500 to-accent-500 transition-all duration-100"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
+      <button
+        type="button"
+        aria-label="Seek video"
+        onClick={(event) => {
+          const video = videoRef.current;
+          if (!video || !video.duration) return;
+          const rect = event.currentTarget.getBoundingClientRect();
+          video.currentTime = ((event.clientX - rect.left) / rect.width) * video.duration;
+        }}
+        className="absolute top-0 right-0 left-0 z-10 h-6 bg-transparent"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
+        <span className="absolute inset-x-0 top-0 h-[3px] bg-white/25">
+          <span
+            className="block h-full bg-gradient-to-r from-brand-500 to-accent-500 transition-[width] duration-100"
+            style={{ width: `${progress}%` }}
+          />
+        </span>
+      </button>
 
       {/* Right side actions */}
-      <div className="absolute right-3 bottom-28 flex flex-col items-center gap-5 sm:right-5">
-        {/* Like */}
-        <button
+      <div
+        className="absolute right-2 z-20 flex flex-col items-center gap-4 sm:right-4 sm:gap-5"
+        style={{ bottom: RAIL_BOTTOM }}
+      >
+        <ActionButton
           onClick={handleLike}
-          className="group flex flex-col items-center gap-1"
-          aria-label={isLiked ? "Unlike" : "Like"}
-        >
-          <span
-            className={`flex size-12 items-center justify-center rounded-full backdrop-blur-md transition-all ${
-              isLiked
-                ? "bg-red-500 text-white"
-                : "bg-white/10 text-white hover:bg-white/20"
-            }`}
-          >
-            <Icon name="heart" size={24} className={isLiked ? "fill-current" : ""} />
-          </span>
-          <span className="text-xs font-bold text-white">{compactNumber(likeCount)}</span>
-        </button>
+          label={isLiked ? "Unlike" : "Like"}
+          caption={compactNumber(likeCount)}
+          icon="heart"
+          active={isLiked}
+          activeClass="bg-red-500 text-white"
+          iconFilled={isLiked}
+        />
 
-        {/* Comment */}
         <Link
           href={`/post/${reel.id}`}
           className="group flex flex-col items-center gap-1"
+          aria-label="Comments"
         >
-          <span className="flex size-12 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/20">
-            <Icon name="message" size={24} />
+          <span className="flex size-11 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/20 sm:size-12">
+            <Icon name="message" size={22} />
           </span>
-          <span className="text-xs font-bold text-white">
+          <span className="text-[11px] font-bold text-white sm:text-xs">
             {compactNumber(reel.commentCount)}
           </span>
         </Link>
 
-        {/* Save */}
-        <button
+        <ActionButton
           onClick={handleSave}
-          className="group flex flex-col items-center gap-1"
-          aria-label={isSaved ? "Unsave" : "Save"}
-        >
-          <span
-            className={`flex size-12 items-center justify-center rounded-full backdrop-blur-md transition-all ${
-              isSaved
-                ? "bg-brand-500 text-white"
-                : "bg-white/10 text-white hover:bg-white/20"
-            }`}
-          >
-            <Icon name="bookmark" size={24} className={isSaved ? "fill-current" : ""} />
-          </span>
-          <span className="text-xs font-bold text-white">Save</span>
-        </button>
+          label={isSaved ? "Unsave" : "Save"}
+          caption="Save"
+          icon="bookmark"
+          active={isSaved}
+          activeClass="bg-brand-500 text-white"
+          iconFilled={isSaved}
+        />
 
-        {/* Share */}
-        <button
-          onClick={() => {
-            if (navigator.share) {
-              navigator.share({
-                title: reel.text,
-                url: `${window.location.origin}/post/${reel.id}`,
-              });
-            }
-          }}
-          className="group flex flex-col items-center gap-1"
-          aria-label="Share"
-        >
-          <span className="flex size-12 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/20">
-            <Icon name="share" size={24} />
-          </span>
-          <span className="text-xs font-bold text-white">Share</span>
-        </button>
+        <ActionButton
+          onClick={handleShare}
+          label="Share"
+          caption={shared ? "Copied" : "Share"}
+          icon={shared ? "check" : "share"}
+        />
 
-        {/* Mute toggle */}
         <button
+          type="button"
           onClick={toggleMute}
-          className="group flex flex-col items-center gap-1"
+          className="flex flex-col items-center gap-1"
           aria-label={isMuted ? "Unmute" : "Mute"}
         >
           <span className="flex size-10 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/20">
-            <Icon name={isMuted ? "mute" : "volume"} size={20} />
+            <Icon name={isMuted ? "mute" : "volume"} size={18} />
           </span>
         </button>
       </div>
 
       {/* Bottom info overlay */}
-      <div className="absolute right-20 bottom-8 left-4 sm:right-24 sm:left-6">
-        {/* Author info */}
+      <div
+        className="absolute right-16 left-3 z-20 sm:right-24 sm:left-6"
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 1.25rem)" }}
+      >
         <Link
-          href={reel.author.handle ? `/teacher/${reel.author.handle}` : "#"}
-          className="group mb-3 flex items-center gap-3"
+          href={reel.author.handle ? `/teacher/${reel.author.handle}` : "/explore"}
+          className="group mb-2.5 flex items-center gap-2.5"
         >
           <Avatar
             name={reel.author.name}
             src={reel.author.avatarId ? `/api/media/${reel.author.avatarId}` : null}
-            size="md"
+            size="sm"
             className="ring-2 ring-white/30"
           />
-          <div>
-            <div className="flex items-center gap-1.5">
-              <span className="font-bold text-white drop-shadow-lg">
-                {reel.author.name}
-              </span>
-              {reel.author.verified && <VerifiedTick />}
-            </div>
-            {reel.author.handle && (
-              <span className="text-sm text-white/70">@{reel.author.handle}</span>
-            )}
-          </div>
-          <button className="ml-2 rounded-full border border-white/50 px-4 py-1.5 text-sm font-bold text-white backdrop-blur-md transition-colors hover:bg-white/20">
-            Follow
-          </button>
+          <span className="flex min-w-0 items-center gap-1.5">
+            <span className="truncate text-sm font-bold text-white drop-shadow-lg">
+              {reel.author.name}
+            </span>
+            {reel.author.verified ? <VerifiedTick /> : null}
+          </span>
+          {reel.author.handle ? (
+            <span className="truncate text-xs text-white/70">@{reel.author.handle}</span>
+          ) : null}
         </Link>
 
-        {/* Caption */}
-        <p className="line-clamp-3 text-sm leading-relaxed text-white drop-shadow-lg">
+        <p className="line-clamp-3 text-[13px] leading-relaxed text-white drop-shadow-lg sm:text-sm">
           {reel.text}
         </p>
 
-        {/* Views */}
-        <div className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-white/70">
-          <Icon name="eye" size={14} />
+        <div className="mt-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-white/70">
+          <Icon name="eye" size={13} />
           {compactNumber(reel.viewCount)} views
+          {isActive ? (
+            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-white/10 px-2 py-0.5">
+              <span className="size-1.5 rounded-full bg-brand-400" />
+              Playing
+            </span>
+          ) : null}
         </div>
       </div>
 
       {/* Gradient overlays for readability */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-80 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-72 bg-gradient-to-t from-black/85 via-black/35 to-transparent"
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-black/50 to-transparent"
+        className="pointer-events-none absolute inset-x-0 top-0 z-10 h-28 bg-gradient-to-b from-black/55 to-transparent"
       />
     </div>
+  );
+}
+
+function ActionButton({
+  onClick,
+  label,
+  caption,
+  icon,
+  active = false,
+  activeClass = "",
+  iconFilled = false,
+}: {
+  onClick: () => void;
+  label: string;
+  caption: string;
+  icon: string;
+  active?: boolean;
+  activeClass?: string;
+  iconFilled?: boolean;
+}) {
+  return (
+    <button type="button" onClick={onClick} className="flex flex-col items-center gap-1" aria-label={label}>
+      <span
+        className={`flex size-11 items-center justify-center rounded-full backdrop-blur-md transition-all sm:size-12 ${
+          active ? activeClass : "bg-white/10 text-white hover:bg-white/20"
+        }`}
+      >
+        <Icon name={icon} size={22} className={iconFilled ? "fill-current" : ""} />
+      </span>
+      <span className="text-[11px] font-bold text-white sm:text-xs">{caption}</span>
+    </button>
   );
 }

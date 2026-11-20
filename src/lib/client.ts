@@ -29,14 +29,35 @@ export async function apiFetch<T>(
   const data = (await res.json().catch(() => null)) as
     | { ok: true; data: T }
     | { ok: false; error: string; code?: string }
+    | Record<string, unknown>
     | null;
 
-  if (!res.ok || !data || !data.ok) {
-    const message = data && "error" in data ? data.error : "Request failed. Please try again.";
-    const code = data && "code" in data ? data.code : undefined;
+  if (!res.ok || !data) {
+    const message =
+      data && typeof data === "object" && "error" in data && typeof data.error === "string"
+        ? data.error
+        : "Request failed. Please try again.";
+    const code =
+      data && typeof data === "object" && "code" in data && typeof data.code === "string"
+        ? data.code
+        : undefined;
     throw new ClientApiError(message, res.status, code);
   }
-  return data.data;
+
+  // Newer routes use the `{ ok, data }` envelope. Older routes return the
+  // payload directly, so accept both shapes.
+  if ("ok" in data) {
+    if (data.ok === true && "data" in data) {
+      return data.data as T;
+    }
+    if (data.ok === false) {
+      const message = "error" in data && typeof data.error === "string" ? data.error : "Request failed. Please try again.";
+      const code = "code" in data && typeof data.code === "string" ? data.code : undefined;
+      throw new ClientApiError(message, res.status, code);
+    }
+  }
+
+  return data as T;
 }
 
 export async function apiUpload<T>(
@@ -86,8 +107,16 @@ type PresignResponse = {
   };
 };
 
+export type UploadedMediaRecord = {
+  id: string;
+  kind: string;
+  mimeType: string;
+  sizeBytes: number;
+  url: string;
+};
+
 /**
- * Direct-to-R2 upload for large files (videos).
+ * Direct-to-storage upload for files that can be large (videos, audio).
  * Bypasses the Cloudflare Worker 100 MB request-body limit by uploading
  * straight to the bucket with a short-lived signed URL.
  */
@@ -96,9 +125,12 @@ export async function apiUploadDirect<T>(
   kind: string,
   onProgress?: (pct: number) => void,
 ): Promise<T> {
+  // MediaRecorder emits values such as `audio/webm;codecs=opus`. Codec
+  // parameters are not part of the signed Content-Type, so strip them.
+  const contentType = file.type.split(";")[0]!.trim().toLowerCase() || "application/octet-stream";
   const presign = await apiFetch<PresignResponse>("/api/upload/presign", {
     method: "POST",
-    body: { kind, contentType: file.type, size: file.size },
+    body: { kind, contentType, size: file.size },
   });
 
   await new Promise<void>((resolve, reject) => {
@@ -124,4 +156,14 @@ export async function apiUploadDirect<T>(
     method: "POST",
     body: { key: presign.upload.key, kind },
   });
+}
+
+/** Upload a file and return the persisted Media record. */
+export async function uploadMedia(
+  file: File,
+  kind: "post_image" | "post_file" | "audio" | "video" | "doc",
+  onProgress?: (pct: number) => void,
+): Promise<UploadedMediaRecord> {
+  const result = await apiUploadDirect<{ media: UploadedMediaRecord }>(file, kind, onProgress);
+  return result.media;
 }

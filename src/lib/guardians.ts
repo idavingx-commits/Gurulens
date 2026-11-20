@@ -4,14 +4,8 @@
  */
 
 import { db } from "./db";
-import crypto from "crypto";
 
 export type GuardianRelationship = "parent" | "guardian" | "other";
-
-// Generate a secure linking code
-function generateLinkingCode(): string {
-  return crypto.randomBytes(4).toString("hex").toUpperCase();
-}
 
 // Register user as a guardian
 export async function registerAsGuardian(userId: string, relationship: GuardianRelationship = "parent") {

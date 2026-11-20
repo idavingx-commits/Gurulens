@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
-import { Icon } from "@/components/ui/icons";
-import { InfoNote } from "@/components/ui/primitives";
 import { getAuth } from "@/lib/auth";
 import { getChannelUsage } from "@/lib/channels";
 import { CreateChannelForm } from "./create-channel-form";

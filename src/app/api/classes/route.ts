@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status") as "active" | "archived" | "draft" | undefined;
     const classes = await getTeacherClasses(session.user.id, { status });
 
-    return NextResponse.json({ classes });
+    return NextResponse.json({ ok: true, data: { classes } });
   } catch (error) {
     console.error("Error in GET /api/classes:", error);
     return NextResponse.json(
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
       ...data,
     });
 
-    return NextResponse.json({ class: cls }, { status: 201 });
+    return NextResponse.json({ ok: true, data: { class: cls } }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(

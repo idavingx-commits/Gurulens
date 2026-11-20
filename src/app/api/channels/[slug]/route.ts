@@ -8,7 +8,6 @@ import {
   getChannelBySlug,
   updateChannel,
   deleteChannel,
-  toggleChannelFollow,
   isFollowingChannel,
 } from "@/lib/channels";
 import { checkPermission } from "@/lib/roles";
