@@ -8,7 +8,9 @@ import { cn } from "@/lib/format";
 
 const ITEMS = [
   { href: "/admin", label: "Overview", icon: "grid" },
-  { href: "/admin/verification", label: "Verification", icon: "shield" },
+  { href: "/admin/verification", label: "Teachers", icon: "shield" },
+  { href: "/admin/organizations", label: "Organizations", icon: "book-open" },
+  { href: "/admin/channels", label: "Channels", icon: "radio" },
   { href: "/admin/reports", label: "Reports", icon: "flag" },
   { href: "/admin/users", label: "Users", icon: "users" },
   { href: "/admin/badges", label: "Badges", icon: "award" },
@@ -17,11 +19,22 @@ const ITEMS = [
 export function AdminNav({
   pendingVerifications,
   openReports,
+  pendingOrganizations = 0,
+  pendingChannels = 0,
 }: {
   pendingVerifications: number;
   openReports: number;
+  pendingOrganizations?: number;
+  pendingChannels?: number;
 }) {
   const pathname = usePathname();
+
+  const counts: Record<string, number> = {
+    "/admin/verification": pendingVerifications,
+    "/admin/reports": openReports,
+    "/admin/organizations": pendingOrganizations,
+    "/admin/channels": pendingChannels,
+  };
 
   return (
     <nav
@@ -31,12 +44,7 @@ export function AdminNav({
       {ITEMS.map((item) => {
         const active =
           item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
-        const count =
-          item.href === "/admin/verification"
-            ? pendingVerifications
-            : item.href === "/admin/reports"
-              ? openReports
-              : 0;
+        const count = counts[item.href] ?? 0;
         return (
           <Link
             key={item.href}

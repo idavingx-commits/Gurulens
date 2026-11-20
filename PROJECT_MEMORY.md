@@ -109,6 +109,35 @@ Production currently has exactly these two accounts and **zero teacher profiles*
 
 ## 9. Changelog (newest first)
 
+### 2026-11-20 — Ecosystem Upgrade Phase 4: Campus, Verification Panels & UI Consistency
+
+**UI consistency pass (all new pages rebuilt on the existing design system):**
+- Uses `Field/Input/Select/Textarea`, `Stat`, `SectionHeader`, `EmptyState`, `InfoNote`, `.card`, `LinkButton`, `Icon` and `apiFetch`.
+- Page shell follows existing pages: `mx-auto w-full max-w-4xl/5xl px-4 pt-8 pb-12 sm:px-6`, `text-2xl font-extrabold tracking-tight`, `text-[13px] text-ink-500`.
+- Removed ad-hoc gradient cards/badges/emoji selects that did not match GuruLens.
+
+**Campus (School Edition):**
+- `/campus` — schools + institutes hub, live org stats (members/classes/students/channels), admin sees all orgs.
+- `/campus/create` — register a school (admin) or institute (teacher); auto slug.
+- `/campus/[slug]` — campus profile, team, branches, classes, verification status + request form.
+- `POST /api/organizations/[id]/verify` — owner/manager verification request with evidence note.
+
+**Four independent verification workflows:**
+1. Teacher verification (`/admin/verification`, existing).
+2. Organization verification (`/admin/organizations`, new).
+3. Channel verification (`/admin/channels`, new; request from `/channel/[slug]`).
+4. Studio/content verification remains in `/studio/verification` (teacher evidence upload).
+
+**Admin additions:**
+- `POST /api/admin/organizations/[id]` — in_review / request_info / approve / reject (id = request id), notifies owners.
+- `POST /api/admin/channels/[id]` — same actions for channel requests, notifies channel owner/org staff.
+- `AdminNav` now has Teachers, Organizations, Channels with pending-count badges.
+- `VerificationDecisions` shared client queue component (reason modal + confirm dialog).
+
+**Navigation:** Campus added to header (signed-in) and to teacher/admin user menus.
+
+**Verification:** TypeScript pass, ESLint 0 errors, 60/60 tests, Next build pass.
+
 ### 2026-11-20 — Ecosystem Upgrade Phase 3: UI Implementation
 
 **New Pages Created:**

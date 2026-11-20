@@ -10,6 +10,7 @@ import { getCurrentUser } from "@/lib/auth";
 const NAV = [
   { href: "/explore", label: "Explore", icon: "users" },
   { href: "/channels", label: "Channels", icon: "radio" },
+  { href: "/campus", label: "Campus", icon: "book-open", auth: true },
   { href: "/reels", label: "Reels", icon: "film" },
   { href: "/feed", label: "Feed", icon: "compass", auth: true },
 ];

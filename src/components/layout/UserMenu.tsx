@@ -64,12 +64,20 @@ export function UserMenu({ user }: { user: HeaderUser }) {
             <MenuItem icon="smartphone" href="/classpulse">
               ClassPulse
             </MenuItem>
+            <MenuItem icon="book-open" href="/campus">
+              Campus
+            </MenuItem>
           </>
         ) : null}
         {isAdmin ? (
-          <MenuItem icon="shield" href="/admin">
-            Admin Console
-          </MenuItem>
+          <>
+            <MenuItem icon="book-open" href="/campus">
+              Campus
+            </MenuItem>
+            <MenuItem icon="shield" href="/admin">
+              Admin Console
+            </MenuItem>
+          </>
         ) : null}
         <MenuItem icon="grid" href="/dashboard">
           My Dashboard

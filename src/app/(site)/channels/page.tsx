@@ -16,7 +16,19 @@ export const metadata: Metadata = {
   description: "Discover and follow educational channels from verified teachers",
 };
 
-function ChannelCard({ channel }: { channel: any }) {
+type ChannelCardData = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  avatarKey: string | null;
+  verifiedStatus: string;
+  followerCount?: number;
+  postCount?: number;
+  _count?: { followers?: number | null; posts?: number | null } | null;
+};
+
+function ChannelCard({ channel }: { channel: ChannelCardData }) {
   const avatarUrl = channel.avatarKey ? publicMediaUrl(channel.avatarKey) : null;
   const followers = channel._count?.followers ?? channel.followerCount ?? 0;
   const posts = channel._count?.posts ?? channel.postCount ?? 0;
@@ -81,7 +93,7 @@ export default async function ChannelsPage({
       {/* Errors */}
       {errorParam === "limit_reached" && (
         <InfoNote icon="alert" tone="warn" className="mb-6">
-          You've reached your channel limit.{" "}
+          You&apos;ve reached your channel limit.{" "}
           <Link href="/pricing" className="font-bold text-warn-700 hover:underline">
             Upgrade your plan
           </Link>{" "}
@@ -146,7 +158,7 @@ export default async function ChannelsPage({
           </div>
           {usage && !usage.canCreate && (
             <InfoNote icon="info" className="mt-4">
-              You've reached your channel limit ({usage.limit}).{" "}
+              You&apos;ve reached your channel limit ({usage.limit}).{" "}
               <Link href="/pricing" className="font-bold text-brand-700 hover:underline">
                 Upgrade
               </Link>{" "}

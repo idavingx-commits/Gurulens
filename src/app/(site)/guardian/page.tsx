@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { Avatar } from "@/components/ui/avatar";
 import { LinkButton } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icons";
-import { EmptyState, SectionHeader, Stat } from "@/components/ui/primitives";
+import { EmptyState, Stat } from "@/components/ui/primitives";
 import { getAuth } from "@/lib/auth";
 import { getGuardianChildren, getChildEnrollments, getChildAttendanceSummary, getChildAssignments } from "@/lib/guardians";
 
@@ -43,7 +43,7 @@ export default async function GuardianPortalPage() {
         <div>
           <h1 className="text-2xl font-extrabold tracking-tight text-ink-900">Guardian Portal</h1>
           <p className="mt-1 text-[13px] text-ink-500">
-            Monitor your children's educational progress.
+            Monitor your children&apos;s educational progress.
           </p>
         </div>
         <LinkButton href="/guardian/link">

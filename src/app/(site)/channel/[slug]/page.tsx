@@ -8,8 +8,10 @@ import { Icon } from "@/components/ui/icons";
 import { EmptyState, SectionHeader, Stat, VerifiedTick } from "@/components/ui/primitives";
 import { getAuth } from "@/lib/auth";
 import { getChannelBySlug, getChannelPosts, isFollowingChannel } from "@/lib/channels";
+import { db } from "@/lib/db";
 import { compactNumber, timeAgo } from "@/lib/format";
 import { publicMediaUrl } from "@/lib/media";
+import { ChannelVerificationRequest } from "./channel-verification";
 import { FollowButton } from "./follow-button";
 import { CreatePostForm } from "./create-post-form";
 import { PostList } from "./post-list";
@@ -35,6 +37,21 @@ export default async function ChannelPage({ params }: Props) {
   const auth = await getAuth();
   const isOwner = auth && channel.ownerType === "user" && channel.ownerId === auth.user.id;
   const following = auth ? await isFollowingChannel(channel.id, auth.user.id) : false;
+
+  let canManage = !!isOwner;
+  if (auth && !canManage && channel.ownerType === "organization" && channel.organizationId) {
+    const membership = await db.organizationMember.findUnique({
+      where: {
+        organizationId_userId: {
+          organizationId: channel.organizationId,
+          userId: auth.user.id,
+        },
+      },
+      select: { role: true, status: true },
+    });
+    canManage =
+      membership?.status === "active" && ["owner", "admin", "manager"].includes(membership.role);
+  }
 
   const avatarUrl = channel.avatarKey ? publicMediaUrl(channel.avatarKey) : null;
   const coverUrl = channel.coverKey ? publicMediaUrl(channel.coverKey) : null;
@@ -78,7 +95,7 @@ export default async function ChannelPage({ params }: Props) {
           </div>
         </div>
         <div className="flex gap-2">
-          {isOwner ? (
+          {canManage ? (
             <LinkButton href={`/channel/${slug}/settings`} variant="outline" size="sm">
               <Icon name="settings" size={16} /> Settings
             </LinkButton>
@@ -99,8 +116,21 @@ export default async function ChannelPage({ params }: Props) {
         <Stat label="Created" value={timeAgo(channel.createdAt)} icon="calendar" />
       </div>
 
+      {/* Verification */}
+      {canManage && (channel.verifiedStatus === "none" || channel.verifiedStatus === "rejected") ? (
+        <section className="mb-8">
+          <SectionHeader
+            title="Get verified"
+            subtitle="Verified channels earn trust with students, parents and followers"
+          />
+          <div className="card p-4">
+            <ChannelVerificationRequest channelSlug={slug} />
+          </div>
+        </section>
+      ) : null}
+
       {/* Post creation */}
-      {isOwner && (
+      {canManage && (
         <div className="mb-8">
           <SectionHeader title="Create Post" subtitle="Share an update with your followers" />
           <div className="card p-4">

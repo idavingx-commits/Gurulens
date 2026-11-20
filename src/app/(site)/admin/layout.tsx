@@ -14,12 +14,19 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   if (!user) redirect("/login?next=/admin");
   if (!ADMIN_ROLES.includes(user.role)) redirect("/dashboard");
 
-  const [pendingVerifications, openReports] = await Promise.all([
-    db.verificationRequest.count({
-      where: { status: { in: ["pending", "in_review", "more_info"] } },
-    }),
-    db.report.count({ where: { status: "open" } }),
-  ]);
+  const [pendingVerifications, openReports, pendingOrganizations, pendingChannels] =
+    await Promise.all([
+      db.verificationRequest.count({
+        where: { status: { in: ["pending", "in_review", "more_info"] } },
+      }),
+      db.report.count({ where: { status: "open" } }),
+      db.organizationVerificationRequest.count({
+        where: { status: { in: ["pending", "in_review"] } },
+      }),
+      db.channelVerificationRequest.count({
+        where: { status: { in: ["pending", "in_review"] } },
+      }),
+    ]);
 
   return (
     <div className="relative isolate mx-auto w-full max-w-6xl px-4 pt-6 pb-10 sm:px-6">
@@ -40,7 +47,12 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
           </p>
         </div>
       </div>
-      <AdminNav pendingVerifications={pendingVerifications} openReports={openReports} />
+      <AdminNav
+        pendingVerifications={pendingVerifications}
+        openReports={openReports}
+        pendingOrganizations={pendingOrganizations}
+        pendingChannels={pendingChannels}
+      />
       <div className="reveal mt-6">{children}</div>
     </div>
   );

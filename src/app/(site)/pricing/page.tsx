@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 
 import { LinkButton } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icons";
@@ -12,14 +11,23 @@ export const metadata: Metadata = {
   description: "Choose the perfect plan for your teaching needs",
 };
 
+type PlanCardPlan = {
+  id: string;
+  name: string;
+  slug: string;
+  type: string;
+  description: string | null;
+  priceLkr: number;
+  billingCycle: string;
+  limits: string;
+};
+
 function PlanCard({
   plan,
   isCurrent,
-  isLoggedIn,
 }: {
-  plan: any;
+  plan: PlanCardPlan;
   isCurrent: boolean;
-  isLoggedIn: boolean;
 }) {
   const limits = JSON.parse(plan.limits);
 
@@ -137,7 +145,6 @@ export default async function PricingPage() {
               key={plan.id}
               plan={plan}
               isCurrent={subscription?.plan?.slug === plan.slug}
-              isLoggedIn={!!auth}
             />
           ))}
         </div>
@@ -156,7 +163,6 @@ export default async function PricingPage() {
               key={plan.id}
               plan={plan}
               isCurrent={subscription?.plan?.slug === plan.slug}
-              isLoggedIn={!!auth}
             />
           ))}
         </div>
@@ -175,7 +181,6 @@ export default async function PricingPage() {
               key={plan.id}
               plan={plan}
               isCurrent={subscription?.plan?.slug === plan.slug}
-              isLoggedIn={!!auth}
             />
           ))}
         </div>

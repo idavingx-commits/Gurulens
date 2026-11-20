@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
       const data = linkSchema.parse(body);
       
       // First ensure user is registered as guardian
-      let guardian = await getGuardianProfile(session.user.id);
+      const guardian = await getGuardianProfile(session.user.id);
       if (!guardian) {
         await registerAsGuardian(session.user.id);
       }
