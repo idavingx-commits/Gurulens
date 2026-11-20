@@ -8,9 +8,10 @@ import { LinkButton } from "@/components/ui/button";
 import { getCurrentUser } from "@/lib/auth";
 
 const NAV = [
-  { href: "/explore", label: "Explore Teachers", icon: "users" },
+  { href: "/explore", label: "Explore", icon: "users" },
+  { href: "/channels", label: "Channels", icon: "radio" },
   { href: "/reels", label: "Reels", icon: "film" },
-  { href: "/feed", label: "Feed", icon: "compass" },
+  { href: "/feed", label: "Feed", icon: "compass", auth: true },
 ];
 
 export async function SiteHeader() {
@@ -23,7 +24,7 @@ export async function SiteHeader() {
           <Logo className="flex-none" />
 
           <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary">
-            {NAV.filter((item) => item.href !== "/feed" || user).map((item) => (
+            {NAV.filter((item) => !item.auth || user).map((item) => (
               <Link
                 key={item.href}
                 href={item.href}

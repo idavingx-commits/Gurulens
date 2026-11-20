@@ -51,9 +51,20 @@ export function UserMenu({ user }: { user: HeaderUser }) {
       </div>
       <div className="pt-1.5">
         {isTeacher ? (
-          <MenuItem icon="video" href="/studio">
-            Teacher Studio
-          </MenuItem>
+          <>
+            <MenuItem icon="video" href="/studio">
+              Teacher Studio
+            </MenuItem>
+            <MenuItem icon="book-open" href="/classhub">
+              ClassHub
+            </MenuItem>
+            <MenuItem icon="radio" href="/channels">
+              My Channels
+            </MenuItem>
+            <MenuItem icon="smartphone" href="/classpulse">
+              ClassPulse
+            </MenuItem>
+          </>
         ) : null}
         {isAdmin ? (
           <MenuItem icon="shield" href="/admin">
