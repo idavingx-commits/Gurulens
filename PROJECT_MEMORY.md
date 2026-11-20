@@ -18,7 +18,7 @@
 
 - **Next.js 16.4.6 (App Router)** — BREAKING CHANGES vs training data. Read `node_modules/next/dist/docs/` before writing code (also enforced by the auto-managed block in `AGENTS.md`). OpenNext requires Next ≥ 16.4.5.
 - React 19, TypeScript (strict), Tailwind v4 (configured via `@theme` in `src/app/globals.css` — no tailwind.config).
-- DB: **Neon Postgres + Prisma driver adapter** → `prisma/schema.prisma` (`provider = "postgresql"`, `url = env("DATABASE_URL")` pooled, `directUrl = env("DIRECT_URL")`, `engineType = "client"`). Runtime client: `src/lib/db.ts` uses a hybrid `@prisma/adapter-neon` transport (`src/lib/db-adapter.ts`): ordinary queries go over Neon's stateless **HTTP** driver, while each transaction opens a short-lived **WebSocket** pool that is closed on commit/rollback. This matters because Cloudflare Workers forbid carrying an I/O object (such as a WebSocket) from one request into another, so a module-level WebSocket pool is not safe. The module-level Prisma client is safe now because no socket survives the request that created it. Neon project **`cold-haze-56644745`**, branch **production** (`br-wandering-block-a1zcxtyt`), database **`neondb`**; `neon.ts` declares services. `neon deploy` pulls `DATABASE_URL` + `DATABASE_URL_UNPOOLED`; `DIRECT_URL` must equal the unpooled URL. **Schema changes need a migration in `prisma/migrations/`** — `npm run db:migrate` locally, `npm run db:migrate:deploy` to apply. Prisma CLI reads `.env` only (not `.env.local`). Seed `prisma/seed.ts` creates reference data + admin/moderator only by default; demo teachers/students are opt-in with `SEED_DEMO_DATA=true`.
+- DB: **Neon Postgres + Prisma driver adapter** → `prisma/schema.prisma` (`provider = "postgresql"`, `url = env("DATABASE_URL")` pooled, `directUrl = env("DIRECT_URL")`, `engineType = "client"`). Runtime client: `src/lib/db.ts` uses a hybrid `@prisma/adapter-neon` transport (`src/lib/db-adapter.ts`): ordinary queries go over Neon's stateless **HTTP** driver, while each transaction opens a short-lived **WebSocket** pool that is closed on commit/rollback. Neon project **`ancient-hall-97118808`** (upgraded 2026-11-20), branch **production** (`br-soft-dew-aoz4mgtd`), database **`neondb`**; `neon.ts` declares Object Storage bucket `assets`. **Schema: 60 tables, 163 indexes, 76 FKs** including Organizations, Channels, ClassHub, Subscriptions, ClassPulse, and Guardians. `neon deploy` pulls `DATABASE_URL` + `DATABASE_URL_UNPOOLED`; `DIRECT_URL` must equal the unpooled URL. **Schema changes need a migration in `prisma/migrations/`** — `npm run db:migrate` locally, `npm run db:migrate:deploy` to apply. Prisma CLI reads `.env` only. Seed `prisma/seed.ts` creates reference data + admin/moderator; `prisma/seed-plans.ts` creates subscription plans.
 - Hosting: **Cloudflare Workers** via `@opennextjs/cloudflare` (`wrangler.jsonc`, `open-next.config.ts`); `npm run cf:build` / `cf:preview` / `cf:deploy`. Production is deployed from this machine with `npx wrangler deploy` (the Workers Builds API currently returns 403, so GitHub auto-deploy is not wired). A separate tiny Worker `gurulens-www` (`workers/www-redirect/`) owns the `www.gurulens.us/*` route and 308-redirects to the apex; `gurulens.us` is a Worker custom domain.
 - Search uses `contains` + `mode: "insensitive"` (Postgres is case-sensitive, unlike SQLite).
 - Tests: Vitest, config `vitest.config.ts` (node env, `@` → `src` alias), suites in `tests/` (ranking, format, totp, rate-limit, validation, media — 60 tests).
@@ -108,6 +108,51 @@ Production currently has exactly these two accounts and **zero teacher profiles*
 - Full-page visual review on the user's ultra-wide monitor (agent can't see images).
 
 ## 9. Changelog (newest first)
+
+### 2026-11-20 — Ecosystem Upgrade Phase 1: Schema Extension
+
+**Database Migration:**
+- Switched to NEW Neon project **`ancient-hall-97118808`** (org `org-divine-base-49419417`, branch `production`).
+- Old database `cold-haze-56644745` backed up to `.env.backup-cold-haze` and `.neon.backup-cold-haze`.
+- Cleaned all demo data (24 demo users deleted), keeping only admin + moderator accounts.
+- Applied migration `20261120163810_ecosystem_upgrade` adding **26 new tables**:
+  - **Organizations**: `Organization`, `OrganizationBranch`, `OrganizationMember`, `OrganizationVerificationRequest`
+  - **Channels**: `Channel`, `ChannelFollow`, `ChannelPost`, `ChannelReaction`, `ChannelVerificationRequest`, `VoiceMessage`, `Poll`, `PollVote`
+  - **ClassHub**: `Class`, `ClassEnrollment`, `ClassSession`, `Attendance`, `Assignment`, `Submission`
+  - **Guardian**: `Guardian`, `GuardianStudent`
+  - **Subscriptions**: `Plan`, `UserSubscription`, `FeatureEntitlement`
+  - **ClassPulse**: `VirtualDevice`, `DeviceEvent`, `StudentCard`
+- Final schema: **60 tables, 163 indexes, 76 foreign keys**.
+
+**Subscription Plans Seeded:**
+- GuruLens Free (3 channels, 5 classes, 500 MB)
+- GuruLens Teacher Pro (10 channels, 20 classes, 5 GB)
+- GuruLens Institute (25 channels, 50 classes, 20 GB, 10 teachers)
+- GuruLens Institute Plus (100 channels, 200 classes, 100 GB, 50 teachers, 10 branches)
+- GuruLens Campus Pilot (50 channels, 100 classes, 50 GB, 500 students)
+- GuruLens Campus Pro (unlimited, 500 GB)
+
+**Configuration Updated:**
+- `neon.ts` simplified to declare only Object Storage bucket `assets` (auth/aiGateway/realtime removed - not used).
+- `prisma/seed-plans.ts` created for subscription plan seeding.
+- `DIRECT_URL` fixed to point to new database (was incorrectly pointing to old project).
+
+**Builds Verified:**
+- TypeScript check: ✓
+- Tests: 60/60 passing
+- Next.js build: ✓
+- OpenNext Cloudflare build: ✓
+
+**Documentation:**
+- Created `docs/AUDIT_AND_UPGRADE_PLAN.md` with comprehensive feature requirements and implementation phases.
+
+**Remaining Work (from AUDIT_AND_UPGRADE_PLAN.md):**
+- Phase 2: Multi-role & organization system APIs
+- Phase 3: Channel system implementation with 3-channel limit enforcement
+- Phase 4-6: ClassHub, Institute, Campus features
+- Phase 7: ClassPulse simulator
+- Phase 8: Subscription enforcement
+- Phase 9+: Reels upgrade, Admin extensions, testing, deployment
 
 ### 2026-11-19 — Live on Neon + Cloudflare, demo data removed
 - Linked Neon project **`cold-haze-56644745`** (org `org-divine-base-49419417`, branch `production`, database `neondb`) with `neon init`; `neon deploy` provisioned the declared services and pulled 15 env vars. Object Storage bucket **`assets`** and Functions `hello` are deployed; Neon Auth, AI Gateway and Realtime are provisioned but **not wired** (the app keeps its own DB-backed auth and has no AI/realtime features).

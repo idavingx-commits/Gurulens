@@ -40,17 +40,17 @@ model User {
   posts                Post[]
   comments             Comment[]
   reactions            Reaction[]
-  reviews              Review[]             @relation("reviewAuthor")
-  reviewsReceived      Review[]             @relation("reviewTeacher")
+  reviews              Review[]              @relation("reviewAuthor")
+  reviewsReceived      Review[]              @relation("reviewTeacher")
   enrollmentCodes      EnrollmentCode[]
-  eligibilitiesGiven   ReviewEligibility[] @relation("eligTeacher")
-  eligibilitiesHeld    ReviewEligibility[] @relation("eligStudent")
-  reportsFiled         Report[]             @relation("reporter")
-  reportsHandled       Report[]             @relation("reportHandler")
+  eligibilitiesGiven   ReviewEligibility[]   @relation("eligTeacher")
+  eligibilitiesHeld    ReviewEligibility[]   @relation("eligStudent")
+  reportsFiled         Report[]              @relation("reporter")
+  reportsHandled       Report[]              @relation("reportHandler")
   moderationActions    ModerationAction[]
   auditLogs            AuditLog[]
-  following            Follow[]             @relation("follower")
-  followers            Follow[]             @relation("followed")
+  following            Follow[]              @relation("follower")
+  followers            Follow[]              @relation("followed")
   savedPosts           SavedPost[]
   notifications        Notification[]
   quizAttempts         QuizAttempt[]
@@ -59,6 +59,21 @@ model User {
   verificationRequests VerificationRequest[] @relation("teacherRequests")
   reviewedRequests     VerificationRequest[] @relation("reviewerRequests")
   badgeGrants          BadgeGrant[]
+
+  // New relations for ecosystem upgrade
+  organizationMemberships OrganizationMember[]
+  channelFollows          ChannelFollow[]
+  channelPosts            ChannelPost[]
+  channelReactions        ChannelReaction[]
+  pollVotes               PollVote[]
+  teacherClasses          Class[]              @relation("teacherClasses")
+  studentEnrollments      ClassEnrollment[]    @relation("studentEnrollments")
+  studentAttendance       Attendance[]         @relation("studentAttendance")
+  studentSubmissions      Submission[]         @relation("studentSubmissions")
+  guardian                Guardian?
+  guardianRelations       GuardianStudent[]    @relation("guardianRelations")
+  subscriptions           UserSubscription[]
+  studentCard             StudentCard?
 
   @@index([role, status])
 }
@@ -103,7 +118,7 @@ model TeacherProfile {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   subjects  TeacherSubject[]
   districts TeacherDistrict[]
   grades    TeacherGrade[]
@@ -113,8 +128,8 @@ model TeacherProfile {
 }
 
 model Subject {
-  id     String @id @default(cuid())
-  slug   String @unique
+  id     String  @id @default(cuid())
+  slug   String  @unique
   name   String
   nameSi String?
 
@@ -122,8 +137,8 @@ model Subject {
 }
 
 model District {
-  id       String @id @default(cuid())
-  slug     String @unique
+  id       String  @id @default(cuid())
+  slug     String  @unique
   name     String
   nameSi   String?
   province String
@@ -198,15 +213,15 @@ model TeacherLanguage {
 
 // status: pending | in_review | more_info | approved | rejected
 model VerificationRequest {
-  id           String    @id @default(cuid())
+  id           String   @id @default(cuid())
   teacherId    String
-  status       String    @default("pending")
+  status       String   @default("pending")
   evidenceKey  String?
   evidenceNote String?
   reviewerId   String?
   actionReason String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   teacher  User  @relation("teacherRequests", fields: [teacherId], references: [id], onDelete: Cascade)
   reviewer User? @relation("reviewerRequests", fields: [reviewerId], references: [id])
@@ -217,12 +232,12 @@ model VerificationRequest {
 
 // kind: verification | achievement
 model Badge {
-  id          String @id @default(cuid())
-  key         String @unique
+  id          String  @id @default(cuid())
+  key         String  @unique
   name        String
   nameSi      String?
   description String
-  kind        String @default("achievement")
+  kind        String  @default("achievement")
 
   grants BadgeGrant[]
 }
@@ -237,8 +252,8 @@ model BadgeGrant {
   revokedAt   DateTime?
   active      Boolean   @default(true)
 
-  badge     Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
-  user      User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, active])
   @@index([badgeId])
@@ -270,10 +285,10 @@ model Post {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  author   User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  comments Comment[]
+  author    User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments  Comment[]
   reactions Reaction[]
-  saves    SavedPost[]
+  saves     SavedPost[]
 
   @@index([authorId, moderationStatus, publishedAt])
   @@index([type, moderationStatus, publishedAt])
@@ -358,7 +373,7 @@ model SavedPost {
 
 // status: published | pending | removed
 model Review {
-  id                String   @id @default(cuid())
+  id                String    @id @default(cuid())
   teacherId         String
   authorId          String
   stars             Int
@@ -366,12 +381,12 @@ model Review {
   support           Int?
   organization      Int?
   feedback          String
-  eligibilityStatus String   @default("verified") // verified | pending
-  status            String   @default("published")
+  eligibilityStatus String    @default("verified") // verified | pending
+  status            String    @default("published")
   teacherReply      String?
   teacherRepliedAt  DateTime?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   teacher User @relation("reviewTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
   author  User @relation("reviewAuthor", fields: [authorId], references: [id], onDelete: Cascade)
@@ -389,8 +404,8 @@ model ReviewEligibility {
   status    String   @default("claimed")
   createdAt DateTime @default(now())
 
-  teacher User @relation("eligTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
-  student User @relation("eligStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  teacher User            @relation("eligTeacher", fields: [teacherId], references: [id], onDelete: Cascade)
+  student User            @relation("eligStudent", fields: [studentId], references: [id], onDelete: Cascade)
   code    EnrollmentCode? @relation(fields: [codeId], references: [id])
 
   @@unique([teacherId, studentId])
@@ -407,7 +422,7 @@ model EnrollmentCode {
   expiresAt DateTime?
   createdAt DateTime  @default(now())
 
-  teacher    User                @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  teacher       User                @relation(fields: [teacherId], references: [id], onDelete: Cascade)
   eligibilities ReviewEligibility[]
 
   @@index([teacherId])
@@ -438,7 +453,7 @@ model Quiz {
 }
 
 model QuizQuestion {
-  id           String @id @default(cuid())
+  id           String  @id @default(cuid())
   quizId       String
   order        Int
   text         String
@@ -536,8 +551,8 @@ model MembershipTier {
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
 
-  teacher   User         @relation(fields: [teacherId], references: [id], onDelete: Cascade)
-  members   Membership[]
+  teacher User         @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  members Membership[]
 
   @@index([teacherId])
 }
@@ -580,4 +595,532 @@ model Setting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Organizations (Institutes & Schools)
+// ---------------------------------------------------------------------------
+
+// type: institute | school
+// verifiedStatus: none | pending | in_review | verified | rejected | suspended
+model Organization {
+  id             String    @id @default(cuid())
+  type           String    @default("institute")
+  name           String
+  slug           String    @unique
+  nameSi         String?
+  description    String?
+  logoKey        String?
+  coverKey       String?
+  website        String?
+  phone          String?
+  email          String?
+  address        String?
+  verifiedStatus String    @default("none")
+  verifiedAt     DateTime?
+  settings       String? // JSON: features, limits, preferences
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  branches             OrganizationBranch[]
+  members              OrganizationMember[]
+  channels             Channel[]
+  classes              Class[]
+  verificationRequests OrganizationVerificationRequest[]
+
+  @@index([type, verifiedStatus])
+  @@index([slug])
+}
+
+model OrganizationBranch {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  address        String?
+  phone          String?
+  isMain         Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members      OrganizationMember[]
+  classes      Class[]
+
+  @@index([organizationId])
+}
+
+// role: owner | admin | manager | teacher | staff
+// status: active | invited | suspended | removed
+model OrganizationMember {
+  id             String    @id @default(cuid())
+  organizationId String
+  branchId       String?
+  userId         String
+  role           String    @default("teacher")
+  permissions    String? // JSON array of permission keys
+  status         String    @default("active")
+  invitedAt      DateTime?
+  joinedAt       DateTime  @default(now())
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  branch       OrganizationBranch? @relation(fields: [branchId], references: [id])
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@index([branchId])
+}
+
+// status: pending | in_review | approved | rejected
+model OrganizationVerificationRequest {
+  id             String   @id @default(cuid())
+  organizationId String
+  status         String   @default("pending")
+  evidenceKeys   String? // JSON array of media keys
+  evidenceNote   String?
+  reviewerId     String?
+  actionReason   String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Channels (Educational communication)
+// ---------------------------------------------------------------------------
+
+// ownerType: user | organization
+// type: personal | institute | school
+// visibility: public | private | members
+// verifiedStatus: none | pending | in_review | verified | rejected
+model Channel {
+  id             String    @id @default(cuid())
+  ownerId        String // userId or organizationId
+  ownerType      String    @default("user")
+  organizationId String? // If owned by organization
+  name           String
+  slug           String    @unique
+  description    String?
+  avatarKey      String?
+  coverKey       String?
+  visibility     String    @default("public")
+  type           String    @default("personal")
+  verifiedStatus String    @default("none")
+  verifiedAt     DateTime?
+  followerCount  Int       @default(0)
+  postCount      Int       @default(0)
+  settings       String? // JSON: notifications, permissions
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  organization         Organization?                @relation(fields: [organizationId], references: [id])
+  posts                ChannelPost[]
+  followers            ChannelFollow[]
+  verificationRequests ChannelVerificationRequest[]
+
+  @@index([ownerId, ownerType])
+  @@index([organizationId])
+  @@index([visibility, isActive])
+  @@index([slug])
+}
+
+model ChannelFollow {
+  channelId String
+  userId    String
+  notifyOn  String?  @default("all") // all | urgent | none
+  createdAt DateTime @default(now())
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([channelId, userId])
+  @@index([userId])
+}
+
+// type: text | image | video | audio | document | poll | quiz | announcement
+// moderationStatus: pending | approved | rejected | removed
+model ChannelPost {
+  id               String    @id @default(cuid())
+  channelId        String
+  authorId         String
+  type             String    @default("text")
+  content          String?
+  mediaKeys        String? // JSON array of media keys
+  isPinned         Boolean   @default(false)
+  isUrgent         Boolean   @default(false)
+  scheduledAt      DateTime?
+  publishedAt      DateTime?
+  moderationStatus String    @default("approved")
+  reactionCount    Int       @default(0)
+  viewCount        Int       @default(0)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  channel      Channel           @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  author       User              @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  reactions    ChannelReaction[]
+  voiceMessage VoiceMessage?
+  poll         Poll?
+
+  @@index([channelId, publishedAt])
+  @@index([channelId, isPinned])
+  @@index([authorId])
+}
+
+// type: like | love | clap | fire | sad
+model ChannelReaction {
+  id            String   @id @default(cuid())
+  channelPostId String
+  userId        String
+  type          String   @default("like")
+  createdAt     DateTime @default(now())
+
+  post ChannelPost @relation(fields: [channelPostId], references: [id], onDelete: Cascade)
+  user User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([channelPostId, userId])
+  @@index([channelPostId])
+}
+
+model VoiceMessage {
+  id            String   @id @default(cuid())
+  channelPostId String   @unique
+  audioKey      String
+  durationSec   Float
+  waveform      String? // JSON array for visualization
+  createdAt     DateTime @default(now())
+
+  post ChannelPost @relation(fields: [channelPostId], references: [id], onDelete: Cascade)
+}
+
+model Poll {
+  id            String    @id @default(cuid())
+  channelPostId String    @unique
+  question      String
+  options       String // JSON array of option strings
+  allowMultiple Boolean   @default(false)
+  endsAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  post  ChannelPost @relation(fields: [channelPostId], references: [id], onDelete: Cascade)
+  votes PollVote[]
+}
+
+model PollVote {
+  id          String   @id @default(cuid())
+  pollId      String
+  userId      String
+  optionIndex Int
+  createdAt   DateTime @default(now())
+
+  poll Poll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, userId, optionIndex])
+  @@index([pollId])
+}
+
+// status: pending | in_review | approved | rejected
+model ChannelVerificationRequest {
+  id           String   @id @default(cuid())
+  channelId    String
+  status       String   @default("pending")
+  evidenceKeys String? // JSON array of media keys
+  evidenceNote String?
+  reviewerId   String?
+  actionReason String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  channel Channel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([channelId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// ClassHub (Class management)
+// ---------------------------------------------------------------------------
+
+// mode: physical | online | both
+// status: active | archived | draft
+model Class {
+  id             String   @id @default(cuid())
+  teacherId      String
+  organizationId String?
+  branchId       String?
+  name           String
+  description    String?
+  subjectId      String?
+  gradeId        String?
+  mode           String   @default("both")
+  schedule       String? // JSON: days, times, duration
+  maxStudents    Int?
+  feeAmount      Int?
+  feeCurrency    String   @default("LKR")
+  feeFrequency   String   @default("monthly") // monthly | per_session | course
+  location       String?
+  onlineLink     String?
+  status         String   @default("active")
+  channelId      String? // Linked channel for announcements
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  teacher      User                @relation("teacherClasses", fields: [teacherId], references: [id], onDelete: Cascade)
+  organization Organization?       @relation(fields: [organizationId], references: [id])
+  branch       OrganizationBranch? @relation(fields: [branchId], references: [id])
+  enrollments  ClassEnrollment[]
+  sessions     ClassSession[]
+  assignments  Assignment[]
+
+  @@index([teacherId, status])
+  @@index([organizationId])
+  @@index([subjectId])
+}
+
+// status: active | completed | withdrawn | pending
+model ClassEnrollment {
+  id          String    @id @default(cuid())
+  classId     String
+  studentId   String
+  status      String    @default("pending")
+  enrolledAt  DateTime  @default(now())
+  completedAt DateTime?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  class   Class @relation(fields: [classId], references: [id], onDelete: Cascade)
+  student User  @relation("studentEnrollments", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, studentId])
+  @@index([studentId])
+}
+
+// status: scheduled | in_progress | completed | cancelled
+model ClassSession {
+  id          String   @id @default(cuid())
+  classId     String
+  scheduledAt DateTime
+  duration    Int // minutes
+  topic       String?
+  notes       String?
+  status      String   @default("scheduled")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  class      Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  attendance Attendance[]
+
+  @@index([classId, scheduledAt])
+}
+
+// status: present | absent | late | excused
+// method: manual | device | virtual
+model Attendance {
+  id           String    @id @default(cuid())
+  sessionId    String
+  studentId    String
+  status       String    @default("present")
+  checkedInAt  DateTime?
+  checkedOutAt DateTime?
+  method       String    @default("manual")
+  deviceId     String?
+  notes        String?
+  createdAt    DateTime  @default(now())
+
+  session ClassSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student User         @relation("studentAttendance", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, studentId])
+  @@index([studentId])
+}
+
+model Assignment {
+  id          String    @id @default(cuid())
+  classId     String
+  title       String
+  description String?
+  dueAt       DateTime?
+  maxScore    Int?
+  attachments String? // JSON array of media keys
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  class       Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  submissions Submission[]
+
+  @@index([classId, dueAt])
+}
+
+// status: submitted | graded | late | resubmit
+model Submission {
+  id           String    @id @default(cuid())
+  assignmentId String
+  studentId    String
+  content      String?
+  attachments  String? // JSON array of media keys
+  score        Int?
+  feedback     String?
+  status       String    @default("submitted")
+  submittedAt  DateTime  @default(now())
+  gradedAt     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  student    User       @relation("studentSubmissions", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, studentId])
+  @@index([studentId])
+}
+
+// ---------------------------------------------------------------------------
+// Guardian relationships
+// ---------------------------------------------------------------------------
+
+// relationship: parent | guardian | other
+model Guardian {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  relationship String   @default("parent")
+  createdAt    DateTime @default(now())
+
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  children GuardianStudent[]
+}
+
+model GuardianStudent {
+  id         String   @id @default(cuid())
+  guardianId String
+  studentId  String
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  guardian Guardian @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+  student  User     @relation("guardianRelations", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([guardianId, studentId])
+  @@index([studentId])
+}
+
+// ---------------------------------------------------------------------------
+// Subscription plans & entitlements
+// ---------------------------------------------------------------------------
+
+// type: free | teacher_pro | institute | institute_plus | campus_pilot | campus_pro
+// billingCycle: monthly | yearly | lifetime
+model Plan {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  description  String?
+  type         String   @default("free")
+  priceLkr     Int      @default(0)
+  billingCycle String   @default("monthly")
+  limits       String // JSON: channels, classes, storage, etc.
+  features     String? // JSON array of feature keys
+  isActive     Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  subscriptions UserSubscription[]
+}
+
+// status: active | cancelled | expired | trial | suspended
+model UserSubscription {
+  id             String    @id @default(cuid())
+  userId         String
+  organizationId String?
+  planId         String
+  status         String    @default("trial")
+  startedAt      DateTime  @default(now())
+  expiresAt      DateTime?
+  trialEndsAt    DateTime?
+  cancelledAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  user         User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan         Plan                 @relation(fields: [planId], references: [id])
+  entitlements FeatureEntitlement[]
+
+  @@index([userId])
+  @@index([organizationId])
+  @@index([status])
+}
+
+model FeatureEntitlement {
+  id             String   @id @default(cuid())
+  subscriptionId String
+  feature        String // channel_count | class_count | storage_mb | etc.
+  limitValue     Int
+  usedValue      Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  subscription UserSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionId, feature])
+}
+
+// ---------------------------------------------------------------------------
+// ClassPulse (Virtual devices & attendance simulation)
+// ---------------------------------------------------------------------------
+
+// status: active | inactive | simulated
+model VirtualDevice {
+  id              String    @id @default(cuid())
+  organizationId  String?
+  classId         String?
+  name            String
+  deviceCode      String    @unique
+  status          String    @default("simulated")
+  lastSeenAt      DateTime?
+  firmwareVersion String?
+  settings        String? // JSON: configuration
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  events DeviceEvent[]
+
+  @@index([organizationId])
+  @@index([status])
+}
+
+// eventType: check_in | check_out | heartbeat | error | simulation
+model DeviceEvent {
+  id          String   @id @default(cuid())
+  deviceId    String
+  eventType   String
+  studentId   String?
+  cardNumber  String?
+  payload     String? // JSON: additional data
+  isSimulated Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  device VirtualDevice @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId, createdAt])
+  @@index([studentId])
+}
+
+model StudentCard {
+  id         String    @id @default(cuid())
+  studentId  String    @unique
+  cardNumber String    @unique
+  isActive   Boolean   @default(true)
+  issuedAt   DateTime  @default(now())
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
 }
