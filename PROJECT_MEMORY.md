@@ -136,6 +136,12 @@ Production currently has exactly these two accounts and **zero teacher profiles*
 
 **Navigation:** Campus added to header (signed-in) and to teacher/admin user menus.
 
+**Channel posts — polls & reactions:**
+- Poll composer (question + 2–6 options, multiple-choice toggle) in `create-post-form.tsx`.
+- Poll voting UI with % bars, chosen state and ended state; `POST /api/channels/[slug]/posts/[postId]/vote`.
+- Like/unlike with real persistence; `POST /api/channels/[slug]/posts/[postId]/react`.
+- Voice message playback via `/api/media/<key>` (recording still pending).
+
 **Verification:** TypeScript pass, ESLint 0 errors, 60/60 tests, Next build pass.
 
 ### 2026-11-20 — Ecosystem Upgrade Phase 3: UI Implementation

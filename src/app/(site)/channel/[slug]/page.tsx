@@ -9,7 +9,7 @@ import { EmptyState, SectionHeader, Stat, VerifiedTick } from "@/components/ui/p
 import { getAuth } from "@/lib/auth";
 import { getChannelBySlug, getChannelPosts, isFollowingChannel } from "@/lib/channels";
 import { db } from "@/lib/db";
-import { compactNumber, timeAgo } from "@/lib/format";
+import { compactNumber, isExpired, timeAgo } from "@/lib/format";
 import { publicMediaUrl } from "@/lib/media";
 import { ChannelVerificationRequest } from "./channel-verification";
 import { FollowButton } from "./follow-button";
@@ -57,6 +57,56 @@ export default async function ChannelPage({ params }: Props) {
   const coverUrl = channel.coverKey ? publicMediaUrl(channel.coverKey) : null;
 
   const { posts } = await getChannelPosts(channel.id, { limit: 20 });
+
+  const myReactions = auth
+    ? await db.channelReaction.findMany({
+        where: {
+          userId: auth.user.id,
+          channelPostId: { in: posts.map((p) => p.id) },
+        },
+        select: { channelPostId: true },
+      })
+    : [];
+  const likedSet = new Set(myReactions.map((r) => r.channelPostId));
+
+  const postItems = posts.map((post) => {
+    const pollVotes = post.poll?.votes ?? [];
+    const optionLabels: string[] = post.poll ? JSON.parse(post.poll.options) : [];
+    return {
+      id: post.id,
+      type: post.type,
+      content: post.content,
+      isPinned: post.isPinned,
+      isUrgent: post.isUrgent,
+      publishedAt: post.publishedAt ? post.publishedAt.toISOString() : null,
+      reactionCount: post._count.reactions,
+      likedByMe: likedSet.has(post.id),
+      author: post.author,
+      voiceMessage: post.voiceMessage
+        ? {
+            audioKey: post.voiceMessage.audioKey,
+            durationSec: post.voiceMessage.durationSec,
+          }
+        : null,
+      poll: post.poll
+        ? {
+            id: post.poll.id,
+            question: post.poll.question,
+            allowMultiple: post.poll.allowMultiple,
+            endsAt: post.poll.endsAt ? post.poll.endsAt.toISOString() : null,
+            ended: isExpired(post.poll.endsAt),
+            totalVotes: new Set(pollVotes.map((v) => v.userId)).size,
+            options: optionLabels.map((label, index) => ({
+              label,
+              count: pollVotes.filter((v) => v.optionIndex === index).length,
+              chosen: auth
+                ? pollVotes.some((v) => v.optionIndex === index && v.userId === auth.user.id)
+                : false,
+            })),
+          }
+        : null,
+    };
+  });
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 pt-6 pb-12 sm:px-6">
@@ -148,7 +198,12 @@ export default async function ChannelPage({ params }: Props) {
           description={isOwner ? "Create your first post above" : "Check back later for updates"}
         />
       ) : (
-        <PostList posts={posts} isOwner={isOwner ?? false} channelSlug={slug} />
+        <PostList
+          posts={postItems}
+          isOwner={isOwner ?? false}
+          channelSlug={slug}
+          signedIn={!!auth}
+        />
       )}
     </div>
   );
