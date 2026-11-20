@@ -175,6 +175,14 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   return auth?.user ?? null;
 }
 
+/**
+ * Alias for getAuth - returns session with user info
+ * Returns null if not authenticated
+ */
+export async function getSession(): Promise<AuthContext | null> {
+  return getAuth();
+}
+
 export function hasRole(user: { role: Role } | null | undefined, roles: readonly Role[]): boolean {
   if (!user) return false;
   return roles.includes(user.role);
