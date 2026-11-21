@@ -33,6 +33,10 @@ export const POST = route(async (req: NextRequest) => {
     throw new ApiError(403, "Only teachers can upload documents.", "forbidden");
   }
 
+  if (kind === "class_cover" && auth.user.role === "student") {
+    throw new ApiError(403, "Only teachers can upload class covers.", "forbidden");
+  }
+
   const { mimeTypes, limit } = normalizeKind(kind);
 
   const head = await headObject(body.key);

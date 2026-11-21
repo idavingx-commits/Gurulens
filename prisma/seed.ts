@@ -103,6 +103,11 @@ const DISTRICTS: Array<[string, string, string, string]> = [
 ];
 
 const GRADES: Array<[string, string, number]> = [
+  ["grade-1", "Grade 1", 1],
+  ["grade-2", "Grade 2", 2],
+  ["grade-3", "Grade 3", 3],
+  ["grade-4", "Grade 4", 4],
+  ["grade-5", "Grade 5", 5],
   ["grade-6", "Grade 6", 6],
   ["grade-7", "Grade 7", 7],
   ["grade-8", "Grade 8", 8],
@@ -203,10 +208,6 @@ async function main() {
   const subjBySlug = new Map(subjects.map((s) => [s.slug, s]));
   const distBySlug = new Map(districts.map((d) => [d.slug, d]));
   const gradeBySlug = new Map(grades.map((g) => [g.slug, g]));
-
-  // Grades used by the extra young-learners teacher (not in GRADES list above).
-  const grade1 = await db.grade.create({ data: { slug: "grade-1", name: "Grade 1", order: 1 } });
-  gradeBySlug.set("grade-1", grade1);
 
   const badges = await Promise.all([
     db.badge.create({ data: { key: "verified-teacher", name: "Verified Teacher", nameSi: "තහවුරු කළ ගුරුවරයා", description: "Identity and claimed qualifications reviewed and approved by GuruLens admins.", kind: "verification" } }),

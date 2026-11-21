@@ -1,13 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icons";
 import { Field, Input, Select, Textarea } from "@/components/ui/input";
 import { InfoNote } from "@/components/ui/primitives";
-import { apiFetch, ClientApiError } from "@/lib/client";
+import { apiFetch, ClientApiError, uploadMedia } from "@/lib/client";
 
 type Subject = { id: string; name: string; nameSi: string | null };
 type Grade = { id: string; name: string };
@@ -20,12 +20,44 @@ export function CreateClassForm({
   grades: Grade[];
 }) {
   const router = useRouter();
+  const coverRef = useRef<HTMLInputElement>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [coverKey, setCoverKey] = useState<string | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [coverError, setCoverError] = useState<string | null>(null);
+
+  async function pickCover(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!["image/png", "image/jpeg", "image/webp"].includes(file.type)) {
+      setCoverError("Choose a JPG, PNG or WebP image.");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setCoverError("Class thumbnails must be 8 MB or smaller.");
+      return;
+    }
+
+    setCoverUploading(true);
+    setCoverError(null);
+    try {
+      const media = await uploadMedia(file, "class_cover");
+      setCoverKey(media.id);
+      setCoverPreview(media.url);
+    } catch (err) {
+      setCoverError(err instanceof ClientApiError ? err.message : "Upload failed.");
+    } finally {
+      setCoverUploading(false);
+      if (coverRef.current) coverRef.current.value = "";
+    }
+  }
 
   async function submit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (pending) return;
+    if (pending || coverUploading) return;
     setError(null);
 
     const formData = new FormData(e.currentTarget);
@@ -39,6 +71,7 @@ export function CreateClassForm({
       feeAmount: formData.get("feeAmount") ? Number(formData.get("feeAmount")) : undefined,
       location: formData.get("location") as string || undefined,
       onlineLink: formData.get("onlineLink") as string || undefined,
+      coverKey: coverKey ?? undefined,
     };
 
     if (!data.name?.trim()) return setError("Please enter a class name.");
@@ -64,6 +97,59 @@ export function CreateClassForm({
           {error}
         </InfoNote>
       )}
+
+      <div>
+        <p className="mb-1.5 text-[13px] font-semibold text-ink-700">Class thumbnail</p>
+        <div className="relative h-40 overflow-hidden rounded-2xl bg-gradient-to-br from-brand-600 via-brand-700 to-accent-700 sm:h-48">
+          {coverPreview ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={coverPreview}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-white/85">
+              <span className="flex size-11 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-sm">
+                <Icon name="school" size={22} />
+              </span>
+              <span className="text-[12px] font-bold">Give your class a face</span>
+            </div>
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-ink-900/50 via-transparent to-transparent" />
+          <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-3">
+            <span className="text-[11.5px] font-bold text-white/90">
+              {coverPreview ? "Thumbnail preview" : "Students see this on /classes"}
+            </span>
+            <button
+              type="button"
+              onClick={() => coverRef.current?.click()}
+              disabled={coverUploading}
+              className="inline-flex flex-none items-center gap-1.5 rounded-full bg-white/90 px-3 py-1.5 text-[11.5px] font-bold text-ink-900 shadow-sm transition-colors hover:bg-white disabled:opacity-70"
+            >
+              {coverUploading ? (
+                <Icon name="loader" size={13} className="animate-spin" />
+              ) : (
+                <Icon name="camera" size={13} />
+              )}
+              {coverUploading ? "Uploading…" : coverPreview ? "Change photo" : "Add photo"}
+            </button>
+          </div>
+        </div>
+        <p className="mt-1.5 text-[11.5px] text-ink-400">
+          Optional · JPG, PNG or WebP up to 8 MB. Wide images (16:9) look best.
+        </p>
+        {coverError ? (
+          <p className="mt-1 text-[11.5px] font-semibold text-danger-600">{coverError}</p>
+        ) : null}
+        <input
+          ref={coverRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="hidden"
+          onChange={pickCover}
+        />
+      </div>
 
       <Field label="Class name" htmlFor="name" hint="Give your class a descriptive name">
         <Input id="name" name="name" placeholder="e.g., A/L Chemistry 2024" required />
@@ -125,7 +211,7 @@ export function CreateClassForm({
       </Field>
 
       <div className="flex gap-3 pt-3">
-        <Button type="submit" disabled={pending} className="flex-1">
+        <Button type="submit" disabled={pending || coverUploading} className="flex-1">
           {pending ? (
             <>
               <Icon name="loader" size={18} className="animate-spin" />

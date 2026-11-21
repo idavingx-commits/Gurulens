@@ -161,7 +161,7 @@ export async function apiUploadDirect<T>(
 /** Upload a file and return the persisted Media record. */
 export async function uploadMedia(
   file: File,
-  kind: "post_image" | "post_file" | "audio" | "video" | "doc",
+  kind: "post_image" | "post_file" | "audio" | "video" | "doc" | "class_cover",
   onProgress?: (pct: number) => void,
 ): Promise<UploadedMediaRecord> {
   const result = await apiUploadDirect<{ media: UploadedMediaRecord }>(file, kind, onProgress);

@@ -23,7 +23,7 @@ export default async function SettingsPage() {
       createdAt: true,
       mfaEnabled: true,
       avatarKey: true,
-      teacherProfile: { select: { handle: true } },
+      teacherProfile: { select: { handle: true, coverKey: true } },
     },
   });
   if (!record) return null;
@@ -66,6 +66,12 @@ export default async function SettingsPage() {
         <ProfileForm
           initialName={user.name}
           avatarUrl={record.avatarKey ? `/api/media/${record.avatarKey}` : null}
+          canHaveCover={Boolean(record.teacherProfile)}
+          coverUrl={
+            record.teacherProfile?.coverKey
+              ? `/api/media/${record.teacherProfile.coverKey}`
+              : null
+          }
         />
 
         <PasswordForm />

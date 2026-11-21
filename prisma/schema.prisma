@@ -870,6 +870,7 @@ model Class {
   onlineLink     String?
   status         String   @default("active")
   channelId      String? // Linked channel for announcements
+  coverKey       String? // Media id for the class thumbnail
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

@@ -35,6 +35,7 @@ export async function createClass(data: {
   feeFrequency?: string;
   location?: string;
   onlineLink?: string;
+  coverKey?: string;
 }) {
   // Check teacher's class limit
   const canCreate = await canCreateClass(data.teacherId, data.organizationId);
@@ -59,6 +60,7 @@ export async function createClass(data: {
       feeFrequency: data.feeFrequency ?? "monthly",
       location: data.location,
       onlineLink: data.onlineLink,
+      coverKey: data.coverKey,
       status: "active",
     },
   });

@@ -9,6 +9,7 @@ import { EmptyState, InfoNote, SectionHeader, Stat } from "@/components/ui/primi
 import { getAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatDate, timeAgo } from "@/lib/format";
+import { ClassCover } from "@/components/classhub/class-cover";
 import { EnrollButton } from "@/components/classhub/enroll-button";
 import {
   ClassAssignments,
@@ -180,12 +181,18 @@ export default async function ClassDetailPage({ params }: Props) {
       </div>
 
       {/* Class hero */}
-      <section className="relative overflow-hidden rounded-3xl bg-white p-6 shadow-lg ring-1 ring-ink-100 sm:p-8">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-24 -right-16 size-64 rounded-full bg-brand-500/10 blur-3xl"
+      <section className="overflow-hidden rounded-3xl bg-white shadow-lg ring-1 ring-ink-100">
+        <ClassCover
+          classId={cls.id}
+          coverUrl={cls.coverKey ? `/api/media/${cls.coverKey}` : null}
+          canEdit={isManager}
         />
-        <div className="relative flex flex-wrap items-start justify-between gap-5">
+        <div className="relative p-6 sm:p-8">
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-24 -right-16 size-64 rounded-full bg-brand-500/10 blur-3xl"
+          />
+          <div className="relative flex flex-wrap items-start justify-between gap-5">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-1 rounded-chip bg-brand-50 px-2.5 py-1 text-[10px] font-black tracking-[0.12em] text-brand-700 uppercase">
@@ -292,6 +299,7 @@ export default async function ClassDetailPage({ params }: Props) {
                 <Icon name="video" size={14} /> Join online class
               </a>
             ) : null}
+          </div>
           </div>
         </div>
       </section>

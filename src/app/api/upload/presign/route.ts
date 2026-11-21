@@ -38,6 +38,10 @@ export const POST = route(async (req: NextRequest) => {
     throw new ApiError(403, "Only teachers can upload documents.", "forbidden");
   }
 
+  if (kind === "class_cover" && auth.user.role === "student") {
+    throw new ApiError(403, "Only teachers can upload class covers.", "forbidden");
+  }
+
   const { mimeTypes, limit } = normalizeKind(kind);
   // Browsers append codec parameters (e.g. `audio/webm;codecs=opus`). The
   // signature must use the bare MIME type and the browser must send exactly

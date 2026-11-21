@@ -10,6 +10,7 @@ import {
   archiveClass,
   getClassStats,
 } from "@/lib/classhub";
+import { db } from "@/lib/db";
 import { checkPermission } from "@/lib/roles";
 import { z } from "zod";
 
@@ -30,6 +31,7 @@ const updateClassSchema = z.object({
   location: z.string().optional(),
   onlineLink: z.string().url().optional(),
   status: z.enum(["active", "archived", "draft"]).optional(),
+  coverKey: z.string().trim().min(1).nullable().optional(),
 });
 
 // GET: Get class details
@@ -104,6 +106,24 @@ export async function PATCH(
 
     const body = await request.json();
     const data = updateClassSchema.parse(body);
+
+    if (data.coverKey) {
+      const isAdmin = session.user.role === "admin" || session.user.role === "moderator";
+      const cover = await db.media.findFirst({
+        where: {
+          id: data.coverKey,
+          kind: "class_cover",
+          ...(isAdmin ? {} : { ownerId: session.user.id }),
+        },
+        select: { id: true },
+      });
+      if (!cover) {
+        return NextResponse.json(
+          { error: "Invalid class cover image." },
+          { status: 400 }
+        );
+      }
+    }
 
     const updated = await updateClass(id, {
       ...data,

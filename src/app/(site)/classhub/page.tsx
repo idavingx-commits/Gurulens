@@ -63,11 +63,23 @@ export default async function ClassHubPage() {
         ) : (
           <div className="space-y-3">
             {classes.slice(0, 5).map((cls) => (
-              <Link key={cls.id} href={`/classhub/class/${cls.id}`} className="card flex items-center justify-between p-4 transition-shadow hover:shadow-md">
-                <div className="min-w-0">
+              <Link key={cls.id} href={`/classhub/class/${cls.id}`} className="card flex items-center gap-3 p-3.5 transition-shadow hover:shadow-md">
+                <span className="relative flex h-14 w-20 flex-none items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-brand-600 to-accent-700 text-white/80">
+                  {cls.coverKey ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`/api/media/${cls.coverKey}`}
+                      alt=""
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  ) : (
+                    <Icon name="school" size={22} />
+                  )}
+                </span>
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold text-ink-900">{cls.name}</span>
-                    <span className="rounded bg-ink-100 px-2 py-0.5 text-xs font-medium text-ink-600">{cls.mode}</span>
+                    <span className="truncate font-bold text-ink-900">{cls.name}</span>
+                    <span className="flex-none rounded bg-ink-100 px-2 py-0.5 text-xs font-medium text-ink-600 capitalize">{cls.mode}</span>
                   </div>
                   <div className="mt-1 flex items-center gap-3 text-xs text-ink-500">
                     <span className="flex items-center gap-1">

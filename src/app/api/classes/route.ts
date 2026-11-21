@@ -9,6 +9,7 @@ import {
   getTeacherClasses,
   getTeacherDashboard,
 } from "@/lib/classhub";
+import { db } from "@/lib/db";
 import { checkPermission } from "@/lib/roles";
 import { z } from "zod";
 
@@ -34,6 +35,7 @@ const createClassSchema = z.object({
   feeFrequency: z.enum(["monthly", "per_session", "course"]).optional(),
   location: z.string().optional(),
   onlineLink: z.string().url().optional(),
+  coverKey: z.string().trim().min(1).optional(),
 });
 
 // GET: List teacher's classes or dashboard
@@ -87,6 +89,19 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const data = createClassSchema.parse(body);
+
+    if (data.coverKey) {
+      const cover = await db.media.findFirst({
+        where: { id: data.coverKey, ownerId: session.user.id, kind: "class_cover" },
+        select: { id: true },
+      });
+      if (!cover) {
+        return NextResponse.json(
+          { error: "Invalid class cover image." },
+          { status: 400 }
+        );
+      }
+    }
 
     // If creating for organization, check org permission
     if (data.organizationId) {

@@ -9,6 +9,7 @@ export const UPLOAD_KINDS = [
   "doc",
   "audio",
   "post_file",
+  "class_cover",
 ] as const;
 export type UploadKind = (typeof UPLOAD_KINDS)[number];
 
@@ -20,6 +21,7 @@ export const UPLOAD_VISIBILITY: Record<UploadKind, string> = {
   doc: "private",
   audio: "public",
   post_file: "public",
+  class_cover: "public",
 };
 
 export function isUploadKind(value: string): value is UploadKind {

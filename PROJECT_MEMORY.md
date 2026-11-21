@@ -74,7 +74,7 @@ Production currently has exactly these two accounts and **zero teacher profiles*
 - **Quiz editing** (`PATCH /api/studio/quizzes/[id]`): requires the FULL body (title, description, questions etc.) — partial bodies wipe fields.
 - **Quizzes have `moderationStatus`** (`approved | pending | rejected | hidden`) — public pages must filter.
 - **Enrollment-code delete guard**: cannot delete a code that has redemptions.
-- **Media keys**: `avatarKey`, `coverKey` etc. point to `storage/` keys; always render via `/api/media/<key>`.
+- **Media pointers**: `avatarKey`, `TeacherProfile.coverKey` and `Class.coverKey` store **Media ids**; always render via `/api/media/<id>`. Legacy channel voice rows may still contain a storage key, which the channel page resolves through `Media.storageKey`.
 - **Date/purity lint rules**: never call `Date.now()`/`new Date()` directly in component render (react-hooks/purity). Use the helpers `maxDobForMinimumAge()` / `isExpired()` in `src/lib/format.ts` or derived state. Never synchronously setState in an effect body (set-state-in-effect) — derive during render or set inside timers/IO callbacks.
 - Status enums: users `active | suspended | pending`; posts/reels `approved | pending | rejected | hidden`; reports `open | resolved | dismissed`.
 
@@ -108,6 +108,28 @@ Production currently has exactly these two accounts and **zero teacher profiles*
 - Full-page visual review on the user's ultra-wide monitor (agent can't see images).
 
 ## 9. Changelog (newest first)
+
+### 2026-11-21 — Grades 1–5, signup photos, teacher banners & class thumbnails
+
+**Grades 1–5:**
+- Migration `20261121130000_grades_class_covers` inserts Grade 1–5 (Grade 2–5 were missing; the taxonomy started at Grade 6) and adds `Class.coverKey`. Seed updated with the same rows.
+- Grade chips on teacher signup, teacher filters, class create and quizzes now include Grade 1–5 straight from the DB.
+
+**Profile photos at signup:**
+- Student and teacher signup forms have an optional photo picker with local preview (`src/components/auth/SignupPhotos.tsx`). The image is uploaded immediately after registration succeeds (the upload API needs a session), so a failed upload never blocks sign-up.
+- Teacher signup also has a banner picker; it uploads kind `cover` which `finalizeUpload` wires to `TeacherProfile.coverKey`.
+
+**Teacher banner in Settings:**
+- `/settings` ProfileForm shows the teacher banner with Change/Add (JPG/PNG/WebP, 8 MB). Uploads kind `cover` and refreshes the page.
+- Public teacher profile already renders `coverKey`; it now fills as soon as the teacher adds a banner.
+
+**Class thumbnails:**
+- New upload kind `class_cover` (public, images only, 8 MB), accepted by multipart and presigned upload routes; students are blocked from using it.
+- `/classhub/create` has a 16:9 thumbnail picker with preview and upload progress; `POST /api/classes` verifies the Media belongs to the teacher and has kind `class_cover`.
+- `/classhub/class/[id]` shows the cover above the hero and lets the teacher/admin add, change or remove it (PATCH `/api/classes/[id]`, `ClassCover` component).
+- Thumbnails appear on `/classes` cards (gradient school fallback when absent), the ClassHub teacher list and the student dashboard class list.
+
+**Verification:** DB migration applied to Neon and Grade 1–5 rows verified; typecheck pass; ESLint 0 errors/0 warnings; 60/60 tests; Next build 77 routes; `cf:build` pass; deployed Worker `bb9d9520-cc7e-43fa-a02b-fdc1b9bad5e6`. Guest smoke: `/register/student`, `/register/teacher`, `/classes`, `/` → 200 with no console errors or horizontal overflow.
 
 ### 2026-11-21 — Ecosystem Upgrade Phase 5: Home editorial, voice/media, ClassHub UI & mobile Reels
 

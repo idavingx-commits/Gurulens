@@ -116,7 +116,27 @@ export default async function StudentDashboardPage() {
                     className="card flex items-center justify-between p-4 transition-shadow hover:shadow-md"
                   >
                     <div className="flex items-center gap-3">
-                      <Avatar name={enrollment.class.teacher.name} size="md" />
+                      {enrollment.class.coverKey ? (
+                        <span className="relative flex h-12 w-16 flex-none items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-brand-600 to-accent-700">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={`/api/media/${enrollment.class.coverKey}`}
+                            alt=""
+                            loading="lazy"
+                            className="absolute inset-0 h-full w-full object-cover"
+                          />
+                        </span>
+                      ) : (
+                        <Avatar
+                          name={enrollment.class.teacher.name}
+                          src={
+                            enrollment.class.teacher.avatarKey
+                              ? `/api/media/${enrollment.class.teacher.avatarKey}`
+                              : null
+                          }
+                          size="md"
+                        />
+                      )}
                       <div>
                         <p className="font-bold text-ink-900">{enrollment.class.name}</p>
                         <p className="text-sm text-ink-500">{enrollment.class.teacher.name}</p>

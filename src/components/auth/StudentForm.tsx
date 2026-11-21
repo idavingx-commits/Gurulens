@@ -4,12 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { AvatarPhotoPicker } from "@/components/auth/SignupPhotos";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icons";
 import { Checkbox, Field, Input } from "@/components/ui/input";
 import { InfoNote } from "@/components/ui/primitives";
 import { Spinner } from "@/components/ui/interactive";
-import { apiFetch, ClientApiError } from "@/lib/client";
+import { apiFetch, apiUpload, ClientApiError } from "@/lib/client";
 import { maxDobForMinimumAge } from "@/lib/format";
 
 export function StudentForm() {
@@ -18,6 +19,7 @@ export function StudentForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [dob, setDob] = useState("");
+  const [photo, setPhoto] = useState<File | null>(null);
   const [terms, setTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -51,6 +53,17 @@ export function StudentForm() {
           acceptTerms: true,
         },
       });
+
+      // The upload endpoint needs a session, so the selected photo is saved
+      // right after the account is created. A failed photo upload should not
+      // block sign-up — the photo can be changed later in Settings.
+      if (photo) {
+        const form = new FormData();
+        form.append("kind", "avatar");
+        form.append("file", photo);
+        await apiUpload<{ media: { id: string } }>("/api/upload", form).catch(() => null);
+      }
+
       router.push("/feed");
       router.refresh();
     } catch (err) {
@@ -93,6 +106,8 @@ export function StudentForm() {
       </p>
 
       <form onSubmit={submit} className="mt-6 space-y-4">
+        <AvatarPhotoPicker name={name} file={photo} onFileChange={setPhoto} />
+
         <Field label="Full name" htmlFor="name">
           <Input
             id="name"

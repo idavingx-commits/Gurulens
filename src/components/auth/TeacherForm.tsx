@@ -4,12 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { AvatarPhotoPicker, CoverPhotoPicker } from "@/components/auth/SignupPhotos";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icons";
 import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/input";
 import { Chip, InfoNote } from "@/components/ui/primitives";
 import { Spinner } from "@/components/ui/interactive";
-import { apiFetch, ClientApiError } from "@/lib/client";
+import { apiFetch, apiUpload, ClientApiError } from "@/lib/client";
 import { maxDobForMinimumAge } from "@/lib/format";
 
 type TaxItem = { slug: string; name: string };
@@ -62,6 +63,8 @@ export function TeacherForm({ taxonomy }: { taxonomy: Taxonomy }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [dob, setDob] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
   const [handle, setHandle] = useState("");
   const [handleCheck, setHandleCheck] = useState<{
     handle: string;
@@ -153,6 +156,22 @@ export function TeacherForm({ taxonomy }: { taxonomy: Taxonomy }) {
           consentPublic: true,
         },
       });
+
+      // Photo endpoints require the newly created session. Failures are
+      // ignored so they never block a successful sign-up.
+      if (avatarFile) {
+        const form = new FormData();
+        form.append("kind", "avatar");
+        form.append("file", avatarFile);
+        await apiUpload<{ media: { id: string } }>("/api/upload", form).catch(() => null);
+      }
+      if (coverFile) {
+        const form = new FormData();
+        form.append("kind", "cover");
+        form.append("file", coverFile);
+        await apiUpload<{ media: { id: string } }>("/api/upload", form).catch(() => null);
+      }
+
       router.push("/studio/verification");
       router.refresh();
     } catch (err) {
@@ -206,6 +225,7 @@ export function TeacherForm({ taxonomy }: { taxonomy: Taxonomy }) {
             />
             Account
           </h2>
+          <AvatarPhotoPicker name={name} file={avatarFile} onFileChange={setAvatarFile} />
           <Field label="Full name" htmlFor="t-name">
             <Input id="t-name" required value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Anuradha Perera" autoComplete="name" />
           </Field>
@@ -230,6 +250,7 @@ export function TeacherForm({ taxonomy }: { taxonomy: Taxonomy }) {
             />
             Public profile
           </h2>
+          <CoverPhotoPicker file={coverFile} onFileChange={setCoverFile} />
           <Field
             label="Teacher handle"
             htmlFor="t-handle"

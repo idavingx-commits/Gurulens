@@ -192,26 +192,46 @@ export default async function ClassesPage({ searchParams }: { searchParams: Sear
                   key={cls.id}
                   className="group flex flex-col overflow-hidden rounded-2xl bg-white shadow-md ring-1 ring-ink-100 transition-all hover:-translate-y-0.5 hover:shadow-xl"
                 >
-                  <div className="flex-1 p-5">
-                    <div className="flex items-start justify-between gap-3">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-chip px-2 py-0.5 text-[9.5px] font-black tracking-[0.1em] uppercase ${mode.chip}`}
-                      >
-                        <Icon name={mode.icon} size={10} strokeWidth={2.8} />
-                        {mode.label}
+                  <div className="relative h-36 overflow-hidden bg-gradient-to-br from-brand-600 via-brand-700 to-accent-700">
+                    {cls.coverKey ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={`/api/media/${cls.coverKey}`}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      />
+                    ) : (
+                      <>
+                        <div
+                          aria-hidden="true"
+                          className="absolute -top-10 -right-8 size-32 rounded-full bg-white/10 blur-2xl"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center text-white/75">
+                          <Icon name="school" size={34} />
+                        </div>
+                      </>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-ink-900/45 via-transparent to-transparent" />
+                    <span
+                      className={`absolute top-3 left-3 inline-flex items-center gap-1 rounded-chip px-2 py-0.5 text-[9.5px] font-black tracking-[0.1em] uppercase shadow-sm ${mode.chip}`}
+                    >
+                      <Icon name={mode.icon} size={10} strokeWidth={2.8} />
+                      {mode.label}
+                    </span>
+                    {enrolled ? (
+                      <span className="absolute top-3 right-3 inline-flex items-center gap-1 rounded-chip bg-success-600/95 px-2 py-0.5 text-[9.5px] font-black tracking-[0.1em] text-white uppercase shadow-sm">
+                        <Icon name="check" size={10} strokeWidth={3} /> Joined
                       </span>
-                      {enrolled ? (
-                        <span className="inline-flex items-center gap-1 rounded-chip bg-success-50 px-2 py-0.5 text-[9.5px] font-black tracking-[0.1em] text-success-700 uppercase">
-                          <Icon name="check" size={10} strokeWidth={3} /> Joined
-                        </span>
-                      ) : isFull ? (
-                        <span className="rounded-chip bg-ink-100 px-2 py-0.5 text-[9.5px] font-black tracking-[0.1em] text-ink-500 uppercase">
-                          Full
-                        </span>
-                      ) : null}
-                    </div>
+                    ) : isFull ? (
+                      <span className="absolute top-3 right-3 rounded-chip bg-ink-900/70 px-2 py-0.5 text-[9.5px] font-black tracking-[0.1em] text-white uppercase backdrop-blur-sm">
+                        Full
+                      </span>
+                    ) : null}
+                  </div>
 
-                    <h3 className="mt-3 line-clamp-2 text-[17px] leading-snug font-extrabold text-ink-900 transition-colors group-hover:text-brand-700">
+                  <div className="flex-1 p-5">
+                    <h3 className="line-clamp-2 text-[17px] leading-snug font-extrabold text-ink-900 transition-colors group-hover:text-brand-700">
                       <Link href={`/classhub/class/${cls.id}`}>{cls.name}</Link>
                     </h3>
 
