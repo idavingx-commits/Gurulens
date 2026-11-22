@@ -11,8 +11,8 @@ import { ReviewForm } from "@/components/teacher/ReviewForm";
 import { RatingSummary, ReviewItem } from "@/components/teacher/Reviews";
 import { Avatar } from "@/components/ui/avatar";
 import { Icon } from "@/components/ui/icons";
-import { CopyButton } from "@/components/ui/interactive";
 import { Badge, EmptyState, InfoNote, Stat, VerifiedTick } from "@/components/ui/primitives";
+import { ShareButton } from "@/components/ui/share-button";
 import { getCurrentUser } from "@/lib/auth";
 import { getTeacherPageData } from "@/lib/data";
 import { db } from "@/lib/db";
@@ -30,18 +30,36 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
       tagline: true,
       bio: true,
       verifiedStatus: true,
-      user: { select: { name: true } },
+      coverKey: true,
+      user: { select: { name: true, avatarKey: true } },
     },
   });
   if (!profile) return { title: "Teacher not found" };
   const name = profile.user.name;
+  const description =
+    profile.tagline ??
+    profile.bio?.slice(0, 150) ??
+    `View ${name}'s classes, reviews, videos and quizzes on GuruLens.`;
+  const imageKey = profile.coverKey ?? profile.user.avatarKey;
+  const imageUrl = imageKey ? `/api/media/${imageKey}` : "/brand/og-default.png";
+
   return {
     title: `${name} — Teacher profile`,
     alternates: { canonical: `/teacher/${handle}` },
-    description:
-      profile.tagline ??
-      profile.bio?.slice(0, 150) ??
-      `View ${name}'s classes, reviews, videos and quizzes on GuruLens.`,
+    description,
+    openGraph: {
+      type: "profile",
+      title: `${name} · GuruLens`,
+      description,
+      url: `/teacher/${handle}`,
+      images: [{ url: imageUrl, alt: `${name} on GuruLens` }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${name} · GuruLens`,
+      description,
+      images: [imageUrl],
+    },
   };
 }
 
@@ -198,7 +216,13 @@ export default async function TeacherProfilePage({
                 isAuthenticated={user !== null}
               />
             )}
-            <CopyButton text={`/teacher/${profile.handle}`} label="Share profile" />
+            <ShareButton
+              path={`/teacher/${profile.handle}`}
+              title={`${profile.user.name} · GuruLens`}
+              text={`Check out ${profile.user.name} on GuruLens`}
+              label="Share profile"
+              className="justify-center"
+            />
             {!isSelf && user ? (
               <ReportButton targetType="user" targetId={profile.userId} className="justify-center" />
             ) : null}

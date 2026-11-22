@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Avatar } from "@/components/ui/avatar";
 import { Icon } from "@/components/ui/icons";
 import { VerifiedTick } from "@/components/ui/primitives";
+import { ShareButton } from "@/components/ui/share-button";
 import type { TeacherCard as TeacherCardData } from "@/lib/data";
 import { cn } from "@/lib/format";
 
@@ -25,18 +26,18 @@ export function TeacherCard({
   const extraDistricts = teacher.districts.length - districts.length;
 
   return (
-    <Link
-      href={`/teacher/${teacher.handle}`}
+    <article
       className={cn(
         "group relative flex flex-col gap-4 overflow-hidden rounded-2xl bg-white p-5 shadow-md ring-1 ring-ink-100 transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:ring-brand-200/50",
         className,
       )}
     >
-      {/* Subtle gradient overlay on hover */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-brand-50/0 to-accent-50/0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-hover:from-brand-50/50 group-hover:to-accent-50/30"
+      <Link
+        href={`/teacher/${teacher.handle}`}
+        aria-label={`View ${teacher.name}'s profile`}
+        className="absolute inset-0 z-10 rounded-2xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
       />
+
       <div className="flex items-start gap-3.5">
         <Avatar name={teacher.name} src={teacher.avatarId ? `/api/media/${teacher.avatarId}` : null} size="lg" />
         <div className="min-w-0 flex-1">
@@ -93,15 +94,28 @@ export function TeacherCard({
             {extraDistricts > 0 ? ` +${extraDistricts}` : ""}
           </span>
         </span>
-        <span
-          className={cn(
-            "flex-none rounded-chip px-2 py-0.5 text-[11px] font-bold",
-            teacher.mode === "online" ? "bg-accent-100 text-accent-700" : "bg-success-100 text-success-600",
-          )}
-        >
-          {MODE_LABEL[teacher.mode] ?? teacher.mode}
+        <span className="flex flex-none items-center gap-1.5">
+          <span className="relative z-20 flex">
+            <ShareButton
+              path={`/teacher/${teacher.handle}`}
+              title={`${teacher.name} · GuruLens`}
+              text={`Check out ${teacher.name} on GuruLens`}
+              label={`Share ${teacher.name}'s profile`}
+              iconOnly
+              variant="ghost"
+              className="!h-7 !w-7 !px-0 text-ink-400 hover:text-brand-700"
+            />
+          </span>
+          <span
+            className={cn(
+              "flex-none rounded-chip px-2 py-0.5 text-[11px] font-bold",
+              teacher.mode === "online" ? "bg-accent-100 text-accent-700" : "bg-success-100 text-success-600",
+            )}
+          >
+            {MODE_LABEL[teacher.mode] ?? teacher.mode}
+          </span>
         </span>
       </div>
-    </Link>
+    </article>
   );
 }

@@ -10,6 +10,7 @@ import {
   getTeacherDashboard,
 } from "@/lib/classhub";
 import { db } from "@/lib/db";
+import { getOrgCapacity } from "@/lib/organizations";
 import { checkPermission } from "@/lib/roles";
 import { z } from "zod";
 
@@ -113,6 +114,17 @@ export async function POST(request: NextRequest) {
       if (!hasOrgPermission) {
         return NextResponse.json(
           { error: "You don't have permission to create classes in this organization" },
+          { status: 403 }
+        );
+      }
+
+      const capacity = await getOrgCapacity(data.organizationId);
+      if (capacity.usage.classes >= capacity.limits.classQuota) {
+        return NextResponse.json(
+          {
+            error: "Campus class limit reached",
+            message: `This campus has reached its class limit (${capacity.limits.classQuota}). Ask an owner to raise the plan limit.`,
+          },
           { status: 403 }
         );
       }

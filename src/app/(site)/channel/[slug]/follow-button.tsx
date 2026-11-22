@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -13,6 +14,7 @@ export function FollowButton({
   channelSlug: string;
   initialFollowing: boolean;
 }) {
+  const router = useRouter();
   const [following, setFollowing] = useState(initialFollowing);
   const [pending, setPending] = useState(false);
 
@@ -24,6 +26,7 @@ export function FollowButton({
         method: "POST",
       });
       setFollowing(data.following);
+      router.refresh();
     } catch {
       // ignore
     } finally {

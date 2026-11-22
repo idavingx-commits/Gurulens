@@ -6,6 +6,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { LinkButton } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icons";
 import { EmptyState, InfoNote, SectionHeader, Stat } from "@/components/ui/primitives";
+import { ShareButton } from "@/components/ui/share-button";
 import { getAuth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatDate, timeAgo } from "@/lib/format";
@@ -17,9 +18,44 @@ import {
   type SubmissionItem,
 } from "./class-assignments";
 
-export const metadata: Metadata = { title: "Class" };
-
 type Props = { params: Promise<{ id: string }> };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { id } = await params;
+  const cls = await db.class.findUnique({
+    where: { id },
+    select: {
+      name: true,
+      description: true,
+      coverKey: true,
+      teacher: { select: { name: true } },
+    },
+  });
+  if (!cls) return { title: "Class not found" };
+
+  const description =
+    cls.description?.slice(0, 150) ??
+    `Join ${cls.name} with ${cls.teacher.name} on GuruLens ClassHub.`;
+  const imageUrl = cls.coverKey ? `/api/media/${cls.coverKey}` : "/brand/og-default.png";
+
+  return {
+    title: cls.name,
+    description,
+    openGraph: {
+      type: "website",
+      title: `${cls.name} · GuruLens`,
+      description,
+      url: `/classhub/class/${id}`,
+      images: [{ url: imageUrl, alt: `${cls.name} on GuruLens` }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${cls.name} · GuruLens`,
+      description,
+      images: [imageUrl],
+    },
+  };
+}
 
 const MODE_LABEL: Record<string, string> = {
   physical: "Physical class",
@@ -289,6 +325,13 @@ export default async function ClassDetailPage({ params }: Props) {
                 <Icon name="settings" size={14} /> Class dashboard
               </LinkButton>
             ) : null}
+            <ShareButton
+              path={`/classhub/class/${cls.id}`}
+              title={`${cls.name} · GuruLens`}
+              text={`Join ${cls.name} with ${cls.teacher.name} on GuruLens`}
+              label="Share class"
+              className="mt-2 w-full"
+            />
             {cls.onlineLink && (isEnrolled || isManager) ? (
               <a
                 href={cls.onlineLink}

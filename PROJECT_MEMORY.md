@@ -74,7 +74,8 @@ Production currently has exactly these two accounts and **zero teacher profiles*
 - **Quiz editing** (`PATCH /api/studio/quizzes/[id]`): requires the FULL body (title, description, questions etc.) — partial bodies wipe fields.
 - **Quizzes have `moderationStatus`** (`approved | pending | rejected | hidden`) — public pages must filter.
 - **Enrollment-code delete guard**: cannot delete a code that has redemptions.
-- **Media pointers**: `avatarKey`, `TeacherProfile.coverKey` and `Class.coverKey` store **Media ids**; always render via `/api/media/<id>`. Legacy channel voice rows may still contain a storage key, which the channel page resolves through `Media.storageKey`.
+- **Media pointers**: `User.avatarKey`, `TeacherProfile.coverKey`, `Channel.avatarKey`, `Channel.coverKey`, `Organization.logoKey`, `Organization.coverKey` and `Class.coverKey` store **Media ids**; always render via `/api/media/<id>`. Channel images must use the dedicated `channel_avatar` / `channel_cover` upload kinds, campus images `org_logo` / `org_cover` (kind `avatar` still auto-wires the user's personal avatar). Legacy channel voice rows may still contain a storage key, which the channel page resolves through `Media.storageKey`.
+- **Campus quotas**: `Organization.settings` JSON holds `teacherQuota`, `channelQuota`, `classQuota`; defaults live in `orgQuotaDefaults()` (institute 10/25/50, school 30/50/100). Org channel/class creation is blocked at the limit, and adding teacher/staff seats respects `teacherQuota`. Only owners/admins (`canAdminister`) can change quotas, branches or team roles; managers (`canManage`) can edit branding and operate classes/channels.
 - **Date/purity lint rules**: never call `Date.now()`/`new Date()` directly in component render (react-hooks/purity). Use the helpers `maxDobForMinimumAge()` / `isExpired()` in `src/lib/format.ts` or derived state. Never synchronously setState in an effect body (set-state-in-effect) — derive during render or set inside timers/IO callbacks.
 - Status enums: users `active | suspended | pending`; posts/reels `approved | pending | rejected | hidden`; reports `open | resolved | dismissed`.
 
@@ -92,6 +93,8 @@ Production currently has exactly these two accounts and **zero teacher profiles*
 - **Components (key APIs)**:
   - `Icon { name, size, className, strokeWidth }` — unknown names fall back to `help`. There is NO `megaphone`. `star` is pre-filled (`fill="currentColor"`); `star-outline` is the outline. Known set: search, home, compass, star, star-outline, check, x, user, users, play, pause, video, film, bell, sliders, menu, heart, bookmark, share, flag, eye, upload, plus, pencil, trash, logout, shield, shield-check, chart, book, clock, sparkles, filter, external, image, camera, info, alert, location, mail, phone, message, help, globe, lock, key, refresh, more, link, crown, zap, fire, send, volume, mute, copy, download, grid, list, award, target, chevron-down/up/left/right, arrow-right, arrow-left, rotate-ccw, panel-left, school, clipboard, inbox, file-text, calendar, radio, settings, smartphone, wifi/wifi-off, credit-card, check-circle, user-plus, loader. Full set lives in `src/components/ui/icons.tsx`; unknown names fall back to `help`.
   - `Avatar { name, src, size ("sm"…), className, ring }` — pass `src={key ? `/api/media/${key}` : null}`.
+  - `ShareButton { path, title?, text?, label?, iconOnly? }` — canonical-link sharing; native sheet on coarse pointers, portal menu otherwise. Reused on teacher/channel/class/campus pages and cards.
+  - `ChannelCard` (`components/channels`) and `CampusClassCard` (`components/campus`) — shared directory cards with cover, avatar, distinct name row, share and manager actions.
   - `Button`/`LinkButton` variants `primary | secondary | outline | ghost | danger | accent | success`, sizes `xs | sm | md | lg`.
   - `SectionHeader { title: string, subtitle?: ReactNode, action?: ReactNode }` — subtitle accepts JSX (used for styled Sinhala spans).
   - `VerifiedTick { className, title?, live? }` — scalloped gradient seal, white check draw-in, pop/shine; `live` adds breathing glow + looping shine (teacher profile header uses it).
@@ -108,6 +111,38 @@ Production currently has exactly these two accounts and **zero teacher profiles*
 - Full-page visual review on the user's ultra-wide monitor (agent can't see images).
 
 ## 9. Changelog (newest first)
+
+### 2026-11-22 — Campus management suite & channel-card overlap fix
+
+**Channel cards:**
+- Extracted `src/components/channels/channel-card.tsx` and reused it on `/channels` and campus channel pages. The cover sits behind an overlapping avatar, but the name and `@slug` now live in their own full-width row below the photo, so the avatar can never cover them (verified in production: 10 px gap, no overlap).
+- Cards show cover/photo or a gradient radio tile, type chip, verified tick, follower/post counts, share and (for managers) settings. `/channels` now imports the shared card instead of duplicating markup.
+
+**Campus expansion — management:**
+- `/campus` directory: hero, live totals, search, school/institute filters, sort by recently added / name / students / classes / team, logo-aware cards, share and manage actions.
+- `/campus/[slug]`: `CampusNav`, cover/logo hero, campus share, stats, upcoming sessions, classes, channels, latest channel posts, team, verification, linked branch cards and JSON-LD `EducationalOrganization`.
+- New `/campus/[slug]/manage`: branding/logo/cover (`OrgProfileForm`), editable plan quotas (`QuotaForm`), branch CRUD (`BranchManager`), team search/filter + roles/branches/status (`TeamManager`), audited activity timeline, verification request and share. Managers can edit branding; only owners/admins can change branches, quotas and team roles.
+- New sub-pages: `/classes` (search, status/branch filters, class cards with share), `/channels` (search/type filters, shared `ChannelCard`), `/people` (role/branch filters, privacy-aware emails), `/timetable` (upcoming sessions + weekly schedule, branch/range filters), `/insights` (managers only: enrolment trend, attendance, top classes/teachers, branch load, channel audience), `/branch/[branchId]` (branch stats, team, classes, map link, share).
+- New APIs: `PATCH /api/organizations/[id]`, branches list/create/update/delete, members list/add/update/remove, quotas PATCH. Owner-only role changes, at-least-one-active-owner guard, branch deletion nulls member/class links before deleting, and adding `teacher`/`staff` seats respects `teacherQuota`.
+- Quotas now enforced when creating org channels (`channelQuota`) and org classes (`classQuota`); personal channel limit stays separate. Channel pages link back to their campus. Upload kinds `org_logo` (5 MB) and `org_cover` (8 MB) added; they do not auto-wire user/profile photos.
+- New shared read models in `src/lib/campus.ts` (sessions, timetable, weekly schedule, latest posts, activity, insights) derive everything from existing tables — no schema migration.
+
+**Verification:** typecheck pass; ESLint 0 errors/0 warnings; 60/60 tests; Next build all routes; `cf:build` pass; deployed Worker `f8462bca-33f6-4826-a9f3-b874a41fc5a5`. Local + production smoke (authenticated): `/campus`, campus overview, classes, channels, people, timetable, insights, manage, branch, `/channels`, `/channel/2027-ol-badge-tt` → 200, zero console errors, zero horizontal overflow. Share menu verified with WhatsApp/Facebook/X/Telegram/Email/Copy link. Guest `/classes`, `/explore`, `/` → 200; `/campus` correctly redirects guests to login.
+
+### 2026-11-21 — Share buttons, channel profile photos/banners & channel settings
+
+**Share everywhere:**
+- New `src/components/ui/share-button.tsx`: native Web Share sheet on touch devices, otherwise a portal menu with WhatsApp, Facebook, X, Telegram and Copy link. The menu is fixed-positioned so it is never clipped by cards.
+- Added to teacher profiles, channels, class detail pages, every `/classes` card and the teacher's Settings header. Share text and URL always come from the canonical page link (`/teacher/<handle>`, `/channel/<slug>`, `/classhub/class/<id>`), so shared links always open the same public page.
+- `generateMetadata` now emits page-specific OpenGraph/Twitter cards for teachers (banner → avatar → default), channels (cover → avatar → default) and classes (cover → default). Channel/post share previews resolve through `metadataBase`.
+
+**Channel photos & UI:**
+- New upload kinds `channel_avatar` (5 MB) and `channel_cover` (8 MB), images only. They deliberately do **not** auto-wire `User.avatarKey`; the channel API validates ownership + kind before saving.
+- `/channels/create` now has banner + photo pickers with live previews; `POST /api/channels` checks the Media rows and stores `avatarKey`/`coverKey`.
+- New `/channel/[slug]/settings` page (owner/org manager only) fixes the previously dead Settings link: edit name, description and visibility, upload/change/remove banner and photo. Image changes PATCH `/api/channels/[slug]` immediately; text changes save together.
+- Channel page rebuilt as a cover hero with overlapping avatar, type/verified chips, owner attribution (links to the teacher profile), follow + share actions and the existing stats. `/channels` cards now use the cover as a header with an overlapping avatar and fall back to a gradient radio tile.
+
+**Verification:** typecheck pass; ESLint 0 errors/0 warnings; 60/60 tests; Next build 77 routes; `cf:build` pass; deployed Worker `74e18af4-ec68-4ae1-8528-70626d9362f2` (workers.dev: `gurulens.idavingx.workers.dev`). Guest smoke: `/channels`, `/channel/2027-ol-badge-tt`, `/teacher/hhhhh`, `/classes` → 200 with no console errors or horizontal overflow; OG/Twitter images resolve to `https://gurulens.us/brand/og-default.png` for profiles without a photo (verified remote HTML); share menu opens in-viewport with WhatsApp/Facebook/X/Telegram/Copy link; channel settings redirects guests to login. Class detail pages remain login-gated, so class share links send recipients to sign in before viewing.
 
 ### 2026-11-21 — Grades 1–5, signup photos, teacher banners & class thumbnails
 

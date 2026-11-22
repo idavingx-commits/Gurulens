@@ -6,6 +6,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Icon } from "@/components/ui/icons";
 import { Input } from "@/components/ui/input";
 import { EmptyState, SectionHeader, VerifiedTick } from "@/components/ui/primitives";
+import { ShareButton } from "@/components/ui/share-button";
 import { getCurrentUser } from "@/lib/auth";
 import { getOpenClasses } from "@/lib/classhub";
 import { db } from "@/lib/db";
@@ -336,15 +337,24 @@ export default async function ClassesPage({ searchParams }: { searchParams: Sear
                         </>
                       )}
                     </div>
-                    <EnrollButton
-                      classId={cls.id}
-                      studentId={user?.id ?? null}
-                      initialEnrolled={enrolled}
-                      isAuthenticated={Boolean(user)}
-                      isTeacher={isTeacher}
-                      isFull={isFull}
-                      className="w-36 flex-none"
-                    />
+                    <div className="flex flex-none items-center gap-2">
+                      <ShareButton
+                        path={`/classhub/class/${cls.id}`}
+                        title={`${cls.name} · GuruLens`}
+                        text={`Join ${cls.name} with ${cls.teacher.name} on GuruLens`}
+                        label="Share class"
+                        iconOnly
+                      />
+                      <EnrollButton
+                        classId={cls.id}
+                        studentId={user?.id ?? null}
+                        initialEnrolled={enrolled}
+                        isAuthenticated={Boolean(user)}
+                        isTeacher={isTeacher}
+                        isFull={isFull}
+                        className="w-36 flex-none"
+                      />
+                    </div>
                   </div>
                 </article>
               );

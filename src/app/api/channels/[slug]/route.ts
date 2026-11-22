@@ -10,6 +10,7 @@ import {
   deleteChannel,
   isFollowingChannel,
 } from "@/lib/channels";
+import { db } from "@/lib/db";
 import { checkPermission } from "@/lib/roles";
 import { z } from "zod";
 
@@ -17,8 +18,8 @@ const updateChannelSchema = z.object({
   name: z.string().min(2).max(100).optional(),
   description: z.string().max(500).optional(),
   visibility: z.enum(["public", "private", "members"]).optional(),
-  avatarKey: z.string().optional(),
-  coverKey: z.string().optional(),
+  avatarKey: z.string().trim().min(1).nullable().optional(),
+  coverKey: z.string().trim().min(1).nullable().optional(),
   settings: z.record(z.string(), z.unknown()).optional(),
 });
 
@@ -98,6 +99,21 @@ export async function PATCH(
 
     const body = await request.json();
     const data = updateChannelSchema.parse(body);
+
+    for (const [field, kind] of [
+      ["avatarKey", "channel_avatar"],
+      ["coverKey", "channel_cover"],
+    ] as const) {
+      const mediaId = data[field];
+      if (!mediaId) continue;
+      const media = await db.media.findFirst({
+        where: { id: mediaId, ownerId: session.user.id, kind },
+        select: { id: true },
+      });
+      if (!media) {
+        return NextResponse.json({ error: "Invalid channel image." }, { status: 400 });
+      }
+    }
 
     const updated = await updateChannel(channel.id, {
       ...data,

@@ -5,6 +5,7 @@ import { MfaCard } from "@/components/settings/MfaCard";
 import { PasswordForm } from "@/components/settings/PasswordForm";
 import { ProfileForm } from "@/components/settings/ProfileForm";
 import { Icon } from "@/components/ui/icons";
+import { ShareButton } from "@/components/ui/share-button";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { formatDate } from "@/lib/format";
@@ -54,12 +55,21 @@ export default async function SettingsPage() {
             </div>
           </div>
           {record.teacherProfile ? (
-            <Link
-              href={`/teacher/${record.teacherProfile.handle}`}
-              className="flex-none rounded-chip bg-brand-50 px-3.5 py-2 text-[12.5px] font-bold text-brand-700 transition-colors hover:bg-brand-100"
-            >
-              View public profile
-            </Link>
+            <div className="flex flex-none items-center gap-2">
+              <ShareButton
+                path={`/teacher/${record.teacherProfile.handle}`}
+                title={`${user.name} · GuruLens`}
+                text={`Check out ${user.name} on GuruLens`}
+                label="Share"
+                iconOnly
+              />
+              <Link
+                href={`/teacher/${record.teacherProfile.handle}`}
+                className="rounded-chip bg-brand-50 px-3.5 py-2 text-[12.5px] font-bold text-brand-700 transition-colors hover:bg-brand-100"
+              >
+                View public profile
+              </Link>
+            </div>
           ) : null}
         </div>
 

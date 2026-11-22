@@ -56,6 +56,10 @@ export const UPLOAD_LIMITS: Record<string, number> = {
   audio: 25 * 1024 * 1024,
   post_file: 20 * 1024 * 1024,
   class_cover: 8 * 1024 * 1024,
+  channel_avatar: 5 * 1024 * 1024,
+  channel_cover: 8 * 1024 * 1024,
+  org_logo: 5 * 1024 * 1024,
+  org_cover: 8 * 1024 * 1024,
 };
 
 export const UPLOAD_MIME: Record<string, string[]> = {
@@ -67,6 +71,10 @@ export const UPLOAD_MIME: Record<string, string[]> = {
   audio: ["audio/webm", "audio/ogg", "audio/mp4", "audio/mpeg", "audio/wav"],
   post_file: ["application/pdf", "image/png", "image/jpeg", "image/webp"],
   class_cover: ["image/png", "image/jpeg", "image/webp"],
+  channel_avatar: ["image/png", "image/jpeg", "image/webp"],
+  channel_cover: ["image/png", "image/jpeg", "image/webp"],
+  org_logo: ["image/png", "image/jpeg", "image/webp"],
+  org_cover: ["image/png", "image/jpeg", "image/webp"],
 };
 
 export const MIN_REVIEWS_FOR_RATING = 1;

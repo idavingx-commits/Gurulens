@@ -123,6 +123,30 @@ export async function createChannel(data: {
   });
 }
 
+/** Owners and organization managers can edit a channel and its photos. */
+export async function canManageChannel(
+  channel: { ownerId: string; ownerType: string; organizationId: string | null },
+  userId: string,
+) {
+  if (channel.ownerType === "user" && channel.ownerId === userId) return true;
+  if (!channel.organizationId) return false;
+
+  const membership = await db.organizationMember.findUnique({
+    where: {
+      organizationId_userId: {
+        organizationId: channel.organizationId,
+        userId,
+      },
+    },
+    select: { role: true, status: true },
+  });
+
+  return (
+    membership?.status === "active" &&
+    ["owner", "admin", "manager"].includes(membership.role)
+  );
+}
+
 // Get channel by slug
 export async function getChannelBySlug(slug: string) {
   return db.channel.findUnique({
@@ -624,4 +648,22 @@ export async function getTrendingChannels(limit = 10) {
     orderBy: [{ followerCount: "desc" }, { postCount: "desc" }],
     take: limit,
   });
+}
+
+/** Directory-level totals for the Channels landing page. */
+export async function getChannelDirectoryStats() {
+  const publicChannel = { isActive: true, visibility: "public" } as const;
+  const [channels, posts, followers] = await Promise.all([
+    db.channel.count({ where: publicChannel }),
+    db.channelPost.count({
+      where: {
+        publishedAt: { not: null },
+        moderationStatus: "approved",
+        channel: publicChannel,
+      },
+    }),
+    db.channelFollow.count({ where: { channel: publicChannel } }),
+  ]);
+
+  return { channels, posts, followers };
 }
