@@ -91,6 +91,9 @@ export function UserMenu({ user }: { user: HeaderUser }) {
         <MenuItem icon="bell" href="/notifications">
           Notifications
         </MenuItem>
+        <MenuItem icon="shield-check" href="/verify-email">
+          Verify email / phone
+        </MenuItem>
         <MenuItem icon="sliders" href="/settings">
           Settings
         </MenuItem>
