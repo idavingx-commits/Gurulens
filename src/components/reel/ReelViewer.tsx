@@ -8,6 +8,7 @@ import { Icon } from "@/components/ui/icons";
 import { VerifiedTick } from "@/components/ui/primitives";
 import { apiFetch } from "@/lib/client";
 import { compactNumber } from "@/lib/format";
+import { ReelCommentsSheet, type ReelViewerUser } from "./reel-comments-sheet";
 
 export interface ReelData {
   id: string;
@@ -18,6 +19,7 @@ export interface ReelData {
   commentCount: number;
   isLiked: boolean;
   isSaved: boolean;
+  authorId: string;
   author: {
     name: string;
     avatarId: string | null;
@@ -28,16 +30,25 @@ export interface ReelData {
 
 interface ReelViewerProps {
   reels: ReelData[];
+  viewer?: ReelViewerUser | null;
 }
 
 /** Distance from the bottom safe area for the action rail. */
 const RAIL_BOTTOM = "calc(env(safe-area-inset-bottom, 0px) + 5.5rem)";
 
-export function ReelViewer({ reels }: ReelViewerProps) {
+export function ReelViewer({ reels, viewer = null }: ReelViewerProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [commentsReelId, setCommentsReelId] = useState<string | null>(null);
+  const [commentCounts, setCommentCounts] = useState<Record<string, number>>(() =>
+    Object.fromEntries(reels.map((reel) => [reel.id, reel.commentCount])),
+  );
   const containerRef = useRef<HTMLDivElement>(null);
   const videoRefs = useRef<Map<number, HTMLVideoElement>>(new Map());
   const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+
+  const commentsReel = commentsReelId
+    ? (reels.find((reel) => reel.id === commentsReelId) ?? null)
+    : null;
 
   const registerVideo = useCallback((index: number, el: HTMLVideoElement | null) => {
     if (el) videoRefs.current.set(index, el);
@@ -78,26 +89,39 @@ export function ReelViewer({ reels }: ReelViewerProps) {
     return () => observer.disconnect();
   }, [reels.length]);
 
-  // Auto-play current video, pause others
+  // Auto-play current video, pause others. Everything pauses while the
+  // comment sheet is open so the reel does not keep playing behind it.
   useEffect(() => {
     videoRefs.current.forEach((video, index) => {
-      if (index === currentIndex) {
+      if (index === currentIndex && !commentsReelId) {
         video.muted = true;
         void video.play().catch(() => {});
       } else {
         video.pause();
-        try {
-          video.currentTime = 0;
-        } catch {
-          // Metadata may not be loaded yet.
+        if (index !== currentIndex) {
+          try {
+            video.currentTime = 0;
+          } catch {
+            // Metadata may not be loaded yet.
+          }
         }
       }
     });
-  }, [currentIndex]);
+  }, [currentIndex, commentsReelId]);
 
-  // Keyboard navigation
+  // Keyboard navigation — ignored while typing or while comments are open.
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (commentsReelId) return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
       if (event.key === "ArrowDown" || event.key === "j") {
         event.preventDefault();
         scrollToReel(Math.min(currentIndex + 1, reels.length - 1));
@@ -108,7 +132,7 @@ export function ReelViewer({ reels }: ReelViewerProps) {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [currentIndex, reels.length, scrollToReel]);
+  }, [currentIndex, reels.length, scrollToReel, commentsReelId]);
 
   if (reels.length === 0) {
     return (
@@ -129,7 +153,11 @@ export function ReelViewer({ reels }: ReelViewerProps) {
     >
       <div
         ref={containerRef}
-        className="h-full w-full snap-y snap-mandatory overflow-y-scroll overscroll-y-contain bg-black [-webkit-overflow-scrolling:touch]"
+        className={
+          commentsReelId
+            ? "h-full w-full overflow-hidden bg-black"
+            : "h-full w-full snap-y snap-mandatory overflow-y-scroll overscroll-y-contain bg-black [-webkit-overflow-scrolling:touch]"
+        }
       >
         {reels.map((reel, index) => (
           <ReelItem
@@ -137,6 +165,8 @@ export function ReelViewer({ reels }: ReelViewerProps) {
             reel={reel}
             index={index}
             isActive={index === currentIndex}
+            commentCount={commentCounts[reel.id] ?? reel.commentCount}
+            onOpenComments={() => setCommentsReelId(reel.id)}
             registerItem={registerItem}
             registerVideo={registerVideo}
           />
@@ -158,13 +188,27 @@ export function ReelViewer({ reels }: ReelViewerProps) {
       </div>
 
       {/* Scroll hint */}
-      {currentIndex === 0 && reels.length > 1 ? (
+      {currentIndex === 0 && reels.length > 1 && !commentsReelId ? (
         <div
           className="pointer-events-none absolute left-1/2 z-50 -translate-x-1/2 animate-bounce text-white/60"
           style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 1.25rem)" }}
         >
           <Icon name="chevron-down" size={26} />
         </div>
+      ) : null}
+
+      {/* TikTok-style comment popup */}
+      {commentsReel ? (
+        <ReelCommentsSheet
+          postId={commentsReel.id}
+          postAuthorId={commentsReel.authorId}
+          initialCount={commentCounts[commentsReel.id] ?? commentsReel.commentCount}
+          viewer={viewer}
+          onClose={() => setCommentsReelId(null)}
+          onCountChange={(count) =>
+            setCommentCounts((prev) => ({ ...prev, [commentsReel.id]: count }))
+          }
+        />
       ) : null}
     </div>
   );
@@ -174,12 +218,16 @@ function ReelItem({
   reel,
   index,
   isActive,
+  commentCount,
+  onOpenComments,
   registerItem,
   registerVideo,
 }: {
   reel: ReelData;
   index: number;
   isActive: boolean;
+  commentCount: number;
+  onOpenComments: () => void;
   registerItem: (index: number, el: HTMLDivElement | null) => void;
   registerVideo: (index: number, el: HTMLVideoElement | null) => void;
 }) {
@@ -335,18 +383,19 @@ function ReelItem({
           iconFilled={isLiked}
         />
 
-        <Link
-          href={`/post/${reel.id}`}
+        <button
+          type="button"
+          onClick={onOpenComments}
           className="group flex flex-col items-center gap-1"
-          aria-label="Comments"
+          aria-label="Open comments"
         >
           <span className="flex size-11 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/20 sm:size-12">
             <Icon name="message" size={22} />
           </span>
           <span className="text-[11px] font-bold text-white sm:text-xs">
-            {compactNumber(reel.commentCount)}
+            {compactNumber(commentCount)}
           </span>
-        </Link>
+        </button>
 
         <ActionButton
           onClick={handleSave}

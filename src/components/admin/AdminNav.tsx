@@ -21,13 +21,19 @@ export function AdminNav({
   openReports,
   pendingOrganizations = 0,
   pendingChannels = 0,
+  isSuperAdmin = false,
 }: {
   pendingVerifications: number;
   openReports: number;
   pendingOrganizations?: number;
   pendingChannels?: number;
+  isSuperAdmin?: boolean;
 }) {
   const pathname = usePathname();
+
+  const items = isSuperAdmin
+    ? [...ITEMS, { href: "/admin/plans", label: "Plans", icon: "crown" }]
+    : ITEMS;
 
   const counts: Record<string, number> = {
     "/admin/verification": pendingVerifications,
@@ -41,7 +47,7 @@ export function AdminNav({
       aria-label="Admin sections"
       className="scrollbar-none -mx-4 flex gap-1.5 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0"
     >
-      {ITEMS.map((item) => {
+      {items.map((item) => {
         const active =
           item.href === "/admin" ? pathname === "/admin" : pathname.startsWith(item.href);
         const count = counts[item.href] ?? 0;

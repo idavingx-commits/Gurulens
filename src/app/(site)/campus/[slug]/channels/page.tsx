@@ -59,7 +59,7 @@ export default async function CampusChannelsPage({ params, searchParams }: Props
   const campusSlug = org.slug;
 
   const access = await getOrgAccess(auth.user.id, auth.user.role, org.id);
-  if (!access.canView) notFound();
+  // Public directory: any signed-in visitor can browse campus channels.
 
   const query = await searchParams;
   const q = (query.q ?? "").trim();

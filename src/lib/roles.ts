@@ -11,7 +11,7 @@ import { getOrgMemberRole, hasOrgPermission } from "./organizations";
 export type UserRole = "student" | "teacher" | "moderator" | "admin";
 
 // Extended roles for organizations
-export type OrgRole = "owner" | "admin" | "manager" | "teacher" | "staff";
+export type OrgRole = "owner" | "admin" | "manager" | "teacher" | "staff" | "student";
 
 // School-specific roles
 export type SchoolRole = 
@@ -212,6 +212,11 @@ const ORG_ROLE_PERMISSIONS: Record<OrgRole, Permission[]> = {
     "channel:post",
   ],
   staff: [
+    "org:read",
+    "class:read",
+    "channel:read",
+  ],
+  student: [
     "org:read",
     "class:read",
     "channel:read",
@@ -426,6 +431,7 @@ function mapOrgRoleToSchoolRole(orgRole: OrgRole): SchoolRole | null {
     manager: "sectional_head",
     teacher: "subject_teacher",
     staff: "staff",
+    student: "student",
   };
   return mapping[orgRole] ?? null;
 }

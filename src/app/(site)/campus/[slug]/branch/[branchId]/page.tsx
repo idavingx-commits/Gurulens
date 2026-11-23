@@ -87,7 +87,7 @@ export default async function CampusBranchPage({ params }: Props) {
   const { org, branch } = data;
 
   const access = await getOrgAccess(auth.user.id, auth.user.role, org.id);
-  if (!access.canView) notFound();
+  // Public branch page: any signed-in visitor can view branch details.
 
   const [members, classes, students] = await Promise.all([
     db.organizationMember.findMany({

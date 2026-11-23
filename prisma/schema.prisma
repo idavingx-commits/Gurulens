@@ -30,6 +30,8 @@ model User {
   dateOfBirth   DateTime?
   ageEligible   Boolean   @default(false)
   emailVerified Boolean   @default(false)
+  phone         String?   @unique
+  phoneVerified Boolean   @default(false)
   mfaEnabled    Boolean   @default(false)
   mfaSecret     String?
   createdAt     DateTime  @default(now())
@@ -627,6 +629,8 @@ model Organization {
   channels             Channel[]
   classes              Class[]
   verificationRequests OrganizationVerificationRequest[]
+  schoolClasses        SchoolClass[]
+  timetableEntries     TimetableEntry[]
 
   @@index([type, verifiedStatus])
   @@index([slug])
@@ -649,7 +653,7 @@ model OrganizationBranch {
   @@index([organizationId])
 }
 
-// role: owner | admin | manager | teacher | staff
+// role: owner | admin | manager | teacher | staff | student
 // status: active | invited | suspended | removed
 model OrganizationMember {
   id             String    @id @default(cuid())
@@ -659,6 +663,12 @@ model OrganizationMember {
   role           String    @default("teacher")
   permissions    String? // JSON array of permission keys
   status         String    @default("active")
+  // School-specific identifiers (unique per school; students: admission/index,
+  // teachers & staff: staffId). Null for institutes and legacy members.
+  admissionNo    String?
+  indexNo        String?
+  staffId        String?
+  schoolClassId  String?
   invitedAt      DateTime?
   joinedAt       DateTime  @default(now())
   createdAt      DateTime  @default(now())
@@ -667,10 +677,15 @@ model OrganizationMember {
   organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   branch       OrganizationBranch? @relation(fields: [branchId], references: [id])
   user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schoolClass  SchoolClass?        @relation(fields: [schoolClassId], references: [id], onDelete: SetNull)
 
   @@unique([organizationId, userId])
+  @@unique([organizationId, admissionNo])
+  @@unique([organizationId, indexNo])
+  @@unique([organizationId, staffId])
   @@index([userId])
   @@index([branchId])
+  @@index([schoolClassId])
 }
 
 // status: pending | in_review | approved | rejected
@@ -689,6 +704,73 @@ model OrganizationVerificationRequest {
 
   @@index([organizationId])
   @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Schools — grade/section groups, weekly timetables, verification codes
+// ---------------------------------------------------------------------------
+
+// A grade-section group inside a school, e.g. "Grade 10 — A".
+model SchoolClass {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  gradeId        String? // loose reference to the global Grade table
+  section        String?
+  room           String?
+  classTeacherId String? // userId of the class teacher
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members      OrganizationMember[]
+  timetable    TimetableEntry[]
+
+  @@unique([organizationId, name])
+  @@index([organizationId])
+}
+
+// One period cell in a school's weekly timetable.
+// dayOfWeek: 1 = Monday … 7 = Sunday. period: 1..12.
+model TimetableEntry {
+  id             String   @id @default(cuid())
+  organizationId String
+  schoolClassId  String
+  dayOfWeek      Int
+  period         Int
+  subject        String
+  teacher        String?
+  room           String?
+  startTime      String? // "07:30"
+  endTime        String? // "08:10"
+  note           String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  schoolClass  SchoolClass  @relation(fields: [schoolClassId], references: [id], onDelete: Cascade)
+
+  @@unique([schoolClassId, dayOfWeek, period])
+  @@index([organizationId])
+}
+
+// One-time codes for email / phone verification.
+// purpose: email_signup | phone
+model VerificationCode {
+  id         String    @id @default(cuid())
+  userId     String?
+  email      String?
+  phone      String?
+  purpose    String
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([email, purpose])
+  @@index([phone, purpose])
+  @@index([userId, purpose])
 }
 
 // ---------------------------------------------------------------------------

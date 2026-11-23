@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { AvatarPhotoPicker, CoverPhotoPicker } from "@/components/auth/SignupPhotos";
+import { SchoolSignupFields, type SchoolSignup } from "@/components/auth/SchoolSignupFields";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icons";
 import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/input";
@@ -80,6 +81,7 @@ export function TeacherForm({ taxonomy }: { taxonomy: Taxonomy }) {
   const [grades, setGrades] = useState<string[]>([]);
   const [languages, setLanguages] = useState<string[]>([]);
   const [consent, setConsent] = useState(false);
+  const [school, setSchool] = useState<SchoolSignup | null>(null);
   const [terms, setTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -134,7 +136,7 @@ export function TeacherForm({ taxonomy }: { taxonomy: Taxonomy }) {
 
     setPending(true);
     try {
-      await apiFetch("/api/auth/register", {
+      const data = await apiFetch<{ devCode?: string }>("/api/auth/register", {
         method: "POST",
         body: {
           role: "teacher",
@@ -154,6 +156,7 @@ export function TeacherForm({ taxonomy }: { taxonomy: Taxonomy }) {
           grades,
           languages,
           consentPublic: true,
+          school: school ?? undefined,
         },
       });
 
@@ -172,7 +175,11 @@ export function TeacherForm({ taxonomy }: { taxonomy: Taxonomy }) {
         await apiUpload<{ media: { id: string } }>("/api/upload", form).catch(() => null);
       }
 
-      router.push("/studio/verification");
+      router.push(
+        `/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent("/studio/verification")}${
+          data.devCode ? `&dev=${data.devCode}` : ""
+        }`,
+      );
       router.refresh();
     } catch (err) {
       setError(err instanceof ClientApiError ? err.message : "Sign up failed. Please try again.");
@@ -338,6 +345,17 @@ export function TeacherForm({ taxonomy }: { taxonomy: Taxonomy }) {
             label="Teaching languages"
             hint={`Selected ${languages.length}/3`}
           />
+        </section>
+
+        <section className="space-y-3">
+          <h2 className="flex items-center gap-2 text-xs font-bold tracking-widest text-ink-400 uppercase">
+            <span
+              aria-hidden="true"
+              className="h-1 w-6 rounded-full bg-gradient-to-r from-brand-500 to-accent-500"
+            />
+            School (optional)
+          </h2>
+          <SchoolSignupFields role="teacher" onChange={setSchool} />
         </section>
 
         <section className="space-y-3">

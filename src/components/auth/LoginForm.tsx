@@ -20,6 +20,7 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [totp, setTotp] = useState("");
   const [mfaRequired, setMfaRequired] = useState(false);
+  const [emailUnverified, setEmailUnverified] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -46,6 +47,9 @@ export function LoginForm() {
       } else if (err instanceof ClientApiError && err.code === "mfa_invalid") {
         setMfaRequired(true);
         setError("Invalid authenticator code. Try again.");
+      } else if (err instanceof ClientApiError && err.code === "email_unverified") {
+        setEmailUnverified(true);
+        setError(null);
       } else {
         setError(err instanceof ClientApiError ? err.message : "Sign in failed. Please try again.");
       }
@@ -122,6 +126,22 @@ export function LoginForm() {
               className="tracking-[0.35em]"
             />
           </Field>
+        ) : null}
+
+        {emailUnverified ? (
+          <InfoNote tone="warn" icon="mail">
+            <p className="font-bold">Verify your email to sign in.</p>
+            <p className="mt-1">
+              We sent a 6-digit code to <span className="font-bold">{email}</span>. Enter it on the
+              verification page to activate your account.
+            </p>
+            <Link
+              href={`/verify-email?email=${encodeURIComponent(email)}`}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-brand-600 px-3.5 py-1.5 text-[12px] font-bold text-white hover:bg-brand-700"
+            >
+              <Icon name="check-circle" size={13} /> Verify email
+            </Link>
+          </InfoNote>
         ) : null}
 
         {error ? <InfoNote tone="danger" icon="alert">{error}</InfoNote> : null}

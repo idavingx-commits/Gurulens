@@ -45,12 +45,23 @@ export function isAgeEligible(dob: Date, minYears = 13): boolean {
 // Auth
 // ---------------------------------------------------------------------------
 
+export const schoolSignupSchema = z
+  .object({
+    organizationId: z.string().trim().min(1),
+    admissionNo: z.string().trim().max(40).optional(),
+    indexNo: z.string().trim().max(40).optional(),
+    staffId: z.string().trim().max(40).optional(),
+    schoolClassId: z.string().trim().min(1).optional(),
+  })
+  .optional();
+
 export const registerStudentSchema = z.object({
   name: nameSchema,
   email: emailSchema,
   password: passwordSchema,
   dateOfBirth: z.coerce.date(),
   acceptTerms: z.literal(true),
+  school: schoolSignupSchema,
 });
 
 export const registerTeacherSchema = registerStudentSchema.extend({
@@ -215,9 +226,21 @@ export const adminVerificationActionSchema = z.object({
 });
 
 export const adminUserActionSchema = z.object({
-  action: z.enum(["suspend", "reactivate", "set_role"]),
+  action: z.enum([
+    "suspend",
+    "reactivate",
+    "set_role",
+    "delete_account",
+    "grant_plan",
+    "cancel_plan",
+    "verify_email",
+    "signout_all",
+  ]),
   role: z.enum(ROLES).optional(),
   reason: z.string().trim().max(300).optional(),
+  planSlug: z.string().trim().min(1).max(80).optional(),
+  durationDays: z.coerce.number().int().min(1).max(3650).optional(),
+  confirmEmail: z.string().trim().max(254).optional(),
 });
 
 export const adminReportActionSchema = z.object({

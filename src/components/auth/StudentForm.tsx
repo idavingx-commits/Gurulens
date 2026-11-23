@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { AvatarPhotoPicker } from "@/components/auth/SignupPhotos";
+import { SchoolSignupFields, type SchoolSignup } from "@/components/auth/SchoolSignupFields";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icons";
 import { Checkbox, Field, Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ export function StudentForm() {
   const [password, setPassword] = useState("");
   const [dob, setDob] = useState("");
   const [photo, setPhoto] = useState<File | null>(null);
+  const [school, setSchool] = useState<SchoolSignup | null>(null);
   const [terms, setTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -42,7 +44,7 @@ export function StudentForm() {
 
     setPending(true);
     try {
-      await apiFetch("/api/auth/register", {
+      const data = await apiFetch<{ devCode?: string }>("/api/auth/register", {
         method: "POST",
         body: {
           role: "student",
@@ -51,6 +53,7 @@ export function StudentForm() {
           password,
           dateOfBirth: new Date(dob).toISOString(),
           acceptTerms: true,
+          school: school ?? undefined,
         },
       });
 
@@ -64,7 +67,11 @@ export function StudentForm() {
         await apiUpload<{ media: { id: string } }>("/api/upload", form).catch(() => null);
       }
 
-      router.push("/feed");
+      router.push(
+        `/verify-email?email=${encodeURIComponent(email)}&next=${encodeURIComponent("/feed")}${
+          data.devCode ? `&dev=${data.devCode}` : ""
+        }`,
+      );
       router.refresh();
     } catch (err) {
       setError(err instanceof ClientApiError ? err.message : "Sign up failed. Please try again.");
@@ -160,6 +167,8 @@ export function StudentForm() {
             />
           </Field>
         </div>
+
+        <SchoolSignupFields role="student" onChange={setSchool} />
 
         <Checkbox
           checked={terms}

@@ -17,7 +17,8 @@ export const DELETE = route<Ctx>(async (req: NextRequest, ctx) => {
       id: true,
       authorId: true,
       postId: true,
-      post: { select: { authorId: true } },
+      moderationStatus: true,
+      post: { select: { authorId: true, commentCount: true } },
     },
   });
   if (!comment) throw new ApiError(404, "Comment not found.", "not_found");
@@ -31,11 +32,17 @@ export const DELETE = route<Ctx>(async (req: NextRequest, ctx) => {
     throw new ApiError(403, "You cannot delete this comment.", "forbidden");
   }
 
+  // Only approved comments were counted; keep the counter from going negative.
+  const nextCount =
+    comment.moderationStatus === "approved"
+      ? Math.max(0, comment.post.commentCount - 1)
+      : comment.post.commentCount;
+
   await db.$transaction([
     db.comment.delete({ where: { id } }),
     db.post.update({
       where: { id: comment.postId },
-      data: { commentCount: { decrement: 1 } },
+      data: { commentCount: nextCount },
     }),
   ]);
 

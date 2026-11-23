@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { Icon } from "@/components/ui/icons";
 import { getCurrentUser } from "@/lib/auth";
-import { ADMIN_ROLES } from "@/lib/constants";
+import { ADMIN_ROLES, SUPER_ADMIN_ROLES } from "@/lib/constants";
 import { db } from "@/lib/db";
 
 export const metadata: Metadata = { title: "Admin Console" };
@@ -52,6 +52,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
         openReports={openReports}
         pendingOrganizations={pendingOrganizations}
         pendingChannels={pendingChannels}
+        isSuperAdmin={SUPER_ADMIN_ROLES.includes(user.role)}
       />
       <div className="reveal mt-6">{children}</div>
     </div>

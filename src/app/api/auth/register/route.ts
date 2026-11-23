@@ -4,8 +4,11 @@ import { ApiError, ok, parseBody, route } from "@/lib/api";
 import { createSession, hashPassword, setSessionCookie } from "@/lib/auth";
 import { notify } from "@/lib/audit";
 import { db } from "@/lib/db";
+import { isMailConfigured, sendEmail, verificationEmailHtml } from "@/lib/mail";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
+import { commitSchoolMembership, prepareSchoolRegistration } from "@/lib/school";
 import { isAgeEligible, registerStudentSchema, registerTeacherSchema } from "@/lib/validation";
+import { issueCode } from "@/lib/verification";
 import { z } from "zod";
 
 const bodySchema = z.discriminatedUnion("role", [
@@ -34,6 +37,19 @@ export const POST = route(async (req: NextRequest) => {
   if (existing) {
     throw new ApiError(409, "An account with this email already exists.", "email_taken");
   }
+
+  // Validate the optional school registration BEFORE creating the account so
+  // a taken admission/staff ID never leaves an orphan user behind.
+  const schoolPrep = body.school
+    ? await prepareSchoolRegistration({
+        organizationId: body.school.organizationId,
+        role: body.role === "student" ? "student" : "teacher",
+        admissionNo: body.school.admissionNo,
+        indexNo: body.school.indexNo,
+        staffId: body.school.staffId,
+        schoolClassId: body.school.schoolClassId,
+      })
+    : null;
 
   const passwordHash = await hashPassword(body.password);
 
@@ -135,11 +151,30 @@ export const POST = route(async (req: NextRequest) => {
     );
   }
 
+  if (schoolPrep) {
+    await commitSchoolMembership(userId, body.name, schoolPrep);
+  }
+
   const session = await createSession(userId, {
     userAgent: req.headers.get("user-agent"),
     ip,
   });
   await setSessionCookie(session.token, session.expiresAt, session.csrfToken);
 
-  return ok({ userId, role: body.role });
+  // Email verification code for the new account.
+  const code = await issueCode("email_signup", { userId, email: body.email });
+  await sendEmail({
+    to: body.email,
+    subject: "Your GuruLens verification code",
+    html: verificationEmailHtml(code),
+  });
+
+  return ok({
+    userId,
+    role: body.role,
+    schoolPending: Boolean(schoolPrep),
+    emailVerified: false,
+    devCode:
+      !isMailConfigured() && process.env.NODE_ENV !== "production" ? code : undefined,
+  });
 });

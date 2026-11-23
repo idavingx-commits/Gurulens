@@ -18,7 +18,7 @@
 
 - **Next.js 16.4.6 (App Router)** — BREAKING CHANGES vs training data. Read `node_modules/next/dist/docs/` before writing code (also enforced by the auto-managed block in `AGENTS.md`). OpenNext requires Next ≥ 16.4.5.
 - React 19, TypeScript (strict), Tailwind v4 (configured via `@theme` in `src/app/globals.css` — no tailwind.config).
-- DB: **Neon Postgres + Prisma driver adapter** → `prisma/schema.prisma` (`provider = "postgresql"`, `url = env("DATABASE_URL")` pooled, `directUrl = env("DIRECT_URL")`, `engineType = "client"`). Runtime client: `src/lib/db.ts` uses a hybrid `@prisma/adapter-neon` transport (`src/lib/db-adapter.ts`): ordinary queries go over Neon's stateless **HTTP** driver, while each transaction opens a short-lived **WebSocket** pool that is closed on commit/rollback. Neon project **`ancient-hall-97118808`** (upgraded 2026-11-20), branch **production** (`br-soft-dew-aoz4mgtd`), database **`neondb`**; `neon.ts` declares Object Storage bucket `assets`. **Schema: 60 tables, 163 indexes, 76 FKs** including Organizations, Channels, ClassHub, Subscriptions, ClassPulse, and Guardians. `neon deploy` pulls `DATABASE_URL` + `DATABASE_URL_UNPOOLED`; `DIRECT_URL` must equal the unpooled URL. **Schema changes need a migration in `prisma/migrations/`** — `npm run db:migrate` locally, `npm run db:migrate:deploy` to apply. Prisma CLI reads `.env` only. Seed `prisma/seed.ts` creates reference data + admin/moderator; `prisma/seed-plans.ts` creates subscription plans.
+- DB: **Neon Postgres + Prisma driver adapter** → `prisma/schema.prisma` (`provider = "postgresql"`, `url = env("DATABASE_URL")` pooled, `directUrl = env("DIRECT_URL")`, `engineType = "client"`). Runtime client: `src/lib/db.ts` uses a hybrid `@prisma/adapter-neon` transport (`src/lib/db-adapter.ts`): ordinary queries go over Neon's stateless **HTTP** driver, while each transaction opens a short-lived **WebSocket** pool that is closed on commit/rollback. Neon project **`ancient-hall-97118808`** (upgraded 2026-11-20), branch **production** (`br-soft-dew-aoz4mgtd`), database **`neondb`**; `neon.ts` declares Object Storage bucket `assets`. **Schema: 63 tables** including Organizations, Channels, ClassHub, Subscriptions, ClassPulse, Guardians, SchoolClass/TimetableEntry and VerificationCode (migration `20261123120000_school_timetables_verification`). `neon deploy` pulls `DATABASE_URL` + `DATABASE_URL_UNPOOLED`; `DIRECT_URL` must equal the unpooled URL. **Schema changes need a migration in `prisma/migrations/`** — `npm run db:migrate` locally, `npm run db:migrate:deploy` to apply. Prisma CLI reads `.env` only. Seed `prisma/seed.ts` creates reference data + admin/moderator; `prisma/seed-plans.ts` creates subscription plans.
 - Hosting: **Cloudflare Workers** via `@opennextjs/cloudflare` (`wrangler.jsonc`, `open-next.config.ts`); `npm run cf:build` / `cf:preview` / `cf:deploy`. Production is deployed from this machine with `npx wrangler deploy` (the Workers Builds API currently returns 403, so GitHub auto-deploy is not wired). A separate tiny Worker `gurulens-www` (`workers/www-redirect/`) owns the `www.gurulens.us/*` route and 308-redirects to the apex; `gurulens.us` is a Worker custom domain.
 - Search uses `contains` + `mode: "insensitive"` (Postgres is case-sensitive, unlike SQLite).
 - Tests: Vitest, config `vitest.config.ts` (node env, `@` → `src` alias), suites in `tests/` (ranking, format, totp, rate-limit, validation, media — 60 tests).
@@ -105,12 +105,54 @@ Production currently has exactly these two accounts and **zero teacher profiles*
 
 ## 8. Backlog / ideas (not built yet)
 
-- Echo/notifications page is a placeholder; CRM-style "schools" concept untouched.
+- Echo/notifications page is a placeholder.
+- School operations beyond timetables (exams, results, bulk CSV import, SMS notifications) exist as plan feature keys but are not built yet.
+- Email/SMS providers are not configured in production yet — set `RESEND_API_KEY` (and optionally `SMS_API_URL`/`SMS_API_KEY`) to activate the verification gates.
 - Landing extras discussed: testimonials auto-scroll carousel, hero teacher mini-card, dark mode touch.
 - FAQ section could get Sinhala translations (questions are English-only today).
 - Full-page visual review on the user's ultra-wide monitor (agent can't see images).
 
 ## 9. Changelog (newest first)
+
+### 2026-11-23 — Plans, admin superpowers, school timetables, reel comments & verification
+
+**Campus header fix:**
+- Campus hero title no longer shares the avatar's negative-margin row: body is `relative z-10`, the avatar overlaps the cover with `-mt-10`, and the name/chips start below the banner (`items-start` + `pt-1`). Long names wrap instead of being clipped by the dark banner.
+
+**Subscription plans (launch: every plan free):**
+- New `src/lib/plan-catalog.ts`: audience groups (teacher/institute/campus), ~38 feature keys in 5 bundles, 8 limit keys, price/limit formatting and "Free for now" launch labels. Unknown feature keys prettify automatically.
+- `/pricing` rebuilt (`pricing-plans.tsx`): gradient hero, audience tabs, premium plan cards (limit chips, feature lists, Start free activation), full comparison table, feature bundles, FAQ. Admins get a "Manage plans" banner.
+- `POST /api/subscriptions` activates any zero-price plan immediately during launch; paid plans stay behind contact-sales. DELETE cancels own subscription (admins: any).
+- New super-admin plan manager `/admin/plans` (+ `/new`, `/[id]`): create/edit plans, audience, price, billing cycle, sort order, visibility, per-limit numbers (-1 = unlimited), tick any mix of existing features or add brand-new feature keys. APIs `POST /api/admin/plans`, `PATCH/DELETE /api/admin/plans/[id]` (delete blocked while subscribers exist). AdminNav shows Plans for super admins only.
+- `prisma/seed-plans.ts` seeds **12 plans** (added Teacher Plus/Elite, Institute Starter/Elite, Campus Starter/Elite), all LKR 0 for launch; existing limits preserved, feature bundles enriched. Applied to Neon.
+
+**Admin superpowers (main admins only) + role-change bug fix:**
+- New `/admin/users/[id]` account console: identity + verification chips, stats, tabs (Overview / Content / Channels & classes / Activity), plan history, sessions, audit trail. Actions: change role, grant/cancel plan, verify email, sign out all sessions, suspend/reactivate, permanent account deletion (type-email confirm, last-admin guard).
+- **Role bug fixed:** promoting to teacher auto-creates a starter teacher profile (unique handle) instead of failing with "no teacher profile"; the role modal defaults to the current role and works on suspended users; demoting/deleting the last active admin is blocked.
+- `POST /api/admin/users/[id]` extended with `delete_account`, `grant_plan`, `cancel_plan`, `verify_email`, `signout_all` (super admin); suspend/reactivate remain available to moderators.
+- New `DELETE /api/admin/posts/[id]` permanently deletes a post (super admin); the content tab also uses the existing remove/restore moderation flow.
+- Comment counters fixed: delete only decrements approved comments and clamps at 0; admin remove/restore of comments now syncs `Post.commentCount`.
+
+**School timetables + school-specific registration IDs:**
+- Migration `20261123120000_school_timetables_verification`: `SchoolClass` (grade/section groups, unique per school), `TimetableEntry` (day 1–7 × period 1–12, unique per class/day/period), `VerificationCode`, `OrganizationMember.admissionNo/indexNo/staffId/schoolClassId` (unique per school), `User.phone/phoneVerified`; backfills existing users as email-verified. Schema now **63 tables**.
+- `src/lib/school.ts`: public school lookup, class/timetable reads, member-only access rule, week saver, shared registration prepare/commit helpers.
+- APIs: public `GET /api/organizations/schools`; `GET/POST .../school-classes` + `PATCH/DELETE .../school-classes/[classId]`; `GET/PUT .../timetable` (GET = active members + system admins only, PUT = managers); `POST .../join` (student: admission number required, optional index number + class; teacher: staff ID; creates an `invited` membership and notifies approvers).
+- `/campus/[slug]/timetable` rebuilt for schools: Mon–Fri period grid, class selector with "My class" highlight, members only; outsiders see a lock note + Join CTA. Institutes keep the session-based view.
+- Manage page: `SchoolClassManager` + `TimetableBuilder` (editable week grid, 6–12 periods) for schools; TeamManager handles students, admission/index/staff IDs, class assignment and one-click Approve for pending registrations.
+- New `/campus/[slug]/join` page; student & teacher signup forms gained an optional school section capturing the identifiers at registration (validated before the account is created). People page lists students with class/ID chips (IDs visible to managers only).
+
+**Reel comments (TikTok-style):**
+- New `reel-comments-sheet.tsx`: portaled bottom sheet (mobile) / right rail (desktop), dark theme, live count, composer, delete for author/post-owner/mods, sign-in CTA for guests.
+- ReelViewer: the comment button opens the sheet; video pauses and scroll/keyboard nav lock while open; j/k/arrow keys no longer hijack text inputs; rail counts update live.
+- Comments API enforces members-only visibility (mirrors the post page) for GET and POST.
+
+**Email + phone verification:**
+- `src/lib/verification.ts` (DB-backed 6-digit codes, 10-min expiry, 5-attempt lockout), `src/lib/mail.ts` (Resend HTTP API — Workers-safe; dormant without `RESEND_API_KEY`), `src/lib/sms.ts` (generic HTTP SMS gateway hook).
+- Registration issues an email code and redirects to `/verify-email` (dev shows the code when no provider is configured); login gates unverified accounts once email is configured (`email_unverified` → verify CTA in LoginForm); verification works with a session or email-only and signs the user in.
+- Phone OTP on the verify page: LK number normalization (+947…), send/verify, unique per account. Admins can manually verify emails from the user console.
+- `.env.example` documents `RESEND_API_KEY`, `MAIL_FROM`, `SMS_API_URL`, `SMS_API_KEY`, `SMS_SENDER_ID`.
+
+**Verification:** typecheck pass; ESLint 0 errors/0 warnings; 60/60 tests; migration applied to Neon; 12 plans seeded; browser checks on `/pricing`, signup → verify flow, campus header (title fully below the dark banner) and the school timetable grid; **28/28 curl smoke checks** (school-ID signup, email code verify, public profile for non-members, pending-registration lock, admin approval, class + timetable CRUD, member timetable access, admin user console, grant plan, role auto-profile fix, signout, authorization guards). Round-3 smoke accounts and the smoke class were deleted from the DB afterwards (`scripts/cleanup-smoke-round3.ts`).
 
 ### 2026-11-22 — Campus management suite & channel-card overlap fix
 

@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Avatar } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { Button, LinkButton } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icons";
 import { ConfirmDialog, Modal } from "@/components/ui/interactive";
 import { Field, Select, Textarea } from "@/components/ui/input";
@@ -110,14 +110,20 @@ export function UsersTable({ rows, viewerRole }: { rows: UserRow[]; viewerRole: 
               </div>
 
               <div className="flex flex-none gap-1.5">
-                {isAdmin && !suspended ? (
+                {isAdmin ? (
+                  <LinkButton href={`/admin/users/${row.id}`} variant="outline" size="xs">
+                    <Icon name="eye" size={12} />
+                    View
+                  </LinkButton>
+                ) : null}
+                {isAdmin ? (
                   <Button
                     type="button"
                     variant="outline"
                     size="xs"
                     disabled={busy}
                     onClick={() => {
-                      setNewRole(row.role === "admin" ? "moderator" : "student");
+                      setNewRole(row.role);
                       setRoleTarget(row);
                     }}
                   >
@@ -240,16 +246,15 @@ export function UsersTable({ rows, viewerRole }: { rows: UserRow[]; viewerRole: 
         <Field label="New role">
           <Select value={newRole} onChange={(e) => setNewRole(e.target.value)}>
             <option value="student">Student</option>
-            <option value="teacher" disabled={!roleTarget?.handle}>
-              Teacher{!roleTarget?.handle ? " (no teacher profile)" : ""}
-            </option>
+            <option value="teacher">Teacher</option>
             <option value="moderator">Moderator</option>
             <option value="admin">Admin</option>
           </Select>
         </Field>
         <p className="mt-2 text-[11.5px] leading-relaxed text-ink-400">
-          Moderators can review verification, reports and suspend users. Admins can also change
-          roles and moderate other admins. Role changes take effect immediately.
+          Promoting someone to teacher creates a starter teacher profile automatically — they can
+          finish it in Studio. Moderators review verification, reports and suspensions; only main
+          admins can change roles, manage plans and delete accounts. Changes apply immediately.
         </p>
       </Modal>
     </>

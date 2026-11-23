@@ -12,7 +12,7 @@ import { InfoNote } from "@/components/ui/primitives";
 import { useToast } from "@/components/ui/toast";
 import { apiFetch, ClientApiError } from "@/lib/client";
 
-export type TeamRole = "owner" | "admin" | "manager" | "teacher" | "staff";
+export type TeamRole = "owner" | "admin" | "manager" | "teacher" | "staff" | "student";
 export type TeamStatus = "active" | "invited" | "suspended";
 
 export type TeamRow = {
@@ -21,6 +21,10 @@ export type TeamRow = {
   status: string;
   joinedLabel: string;
   branch: { id: string; name: string } | null;
+  admissionNo?: string | null;
+  indexNo?: string | null;
+  staffId?: string | null;
+  schoolClass?: { id: string; name: string } | null;
   user: { id: string; name: string; email: string; avatarKey: string | null; role: string };
 };
 
@@ -30,6 +34,7 @@ const ROLE_LABEL: Record<string, string> = {
   manager: "Manager",
   teacher: "Teacher",
   staff: "Staff",
+  student: "Student",
 };
 
 const STATUS_TONE: Record<string, string> = {
@@ -42,11 +47,13 @@ export function TeamManager({
   organizationId,
   members,
   branches,
+  schoolClasses = [],
   canEdit,
 }: {
   organizationId: string;
   members: TeamRow[];
   branches: { id: string; name: string }[];
+  schoolClasses?: { id: string; name: string }[];
   canEdit: boolean;
 }) {
   const router = useRouter();
@@ -59,6 +66,10 @@ export function TeamManager({
   const [editRole, setEditRole] = useState<TeamRole>("teacher");
   const [editBranch, setEditBranch] = useState("");
   const [editStatus, setEditStatus] = useState<TeamStatus>("active");
+  const [editClass, setEditClass] = useState("");
+  const [editAdmission, setEditAdmission] = useState("");
+  const [editIndex, setEditIndex] = useState("");
+  const [editStaff, setEditStaff] = useState("");
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<TeamRow | null>(null);
@@ -66,6 +77,7 @@ export function TeamManager({
   const [roleFilter, setRoleFilter] = useState("all");
 
   const base = `/api/organizations/${organizationId}/members`;
+  const pendingCount = members.filter((m) => m.status === "invited").length;
 
   const needle = search.trim().toLowerCase();
   const filtered = members.filter((member) => {
@@ -119,6 +131,10 @@ export function TeamManager({
     setEditStatus(
       member.status === "invited" || member.status === "suspended" ? member.status : "active",
     );
+    setEditClass(member.schoolClass?.id ?? "");
+    setEditAdmission(member.admissionNo ?? "");
+    setEditIndex(member.indexNo ?? "");
+    setEditStaff(member.staffId ?? "");
     setError(null);
   }
 
@@ -133,6 +149,10 @@ export function TeamManager({
           role: editRole,
           branchId: editBranch || null,
           status: editStatus,
+          schoolClassId: editClass || null,
+          admissionNo: editAdmission.trim() || null,
+          indexNo: editIndex.trim() || null,
+          staffId: editStaff.trim() || null,
         },
       });
       setEditingId(null);
@@ -198,6 +218,15 @@ export function TeamManager({
         </InfoNote>
       ) : null}
 
+      {pendingCount > 0 ? (
+        <InfoNote icon="user-plus" tone="warn" className="mt-4">
+          <span className="font-bold">
+            {pendingCount} registration{pendingCount === 1 ? "" : "s"} awaiting approval.
+          </span>{" "}
+          Check the admission / staff IDs below, then press Approve.
+        </InfoNote>
+      ) : null}
+
       {canEdit ? (
         <form onSubmit={addMember} className="mt-4 rounded-2xl border border-brand-100 bg-brand-50/40 p-4">
           <p className="mb-3 text-[12.5px] font-bold text-ink-700">Add an existing GuruLens account</p>
@@ -220,6 +249,7 @@ export function TeamManager({
               >
                 <option value="teacher">Teacher</option>
                 <option value="staff">Staff</option>
+                <option value="student">Student</option>
                 <option value="manager">Manager</option>
                 <option value="admin">Admin</option>
                 <option value="owner">Owner</option>
@@ -290,6 +320,7 @@ export function TeamManager({
             <option value="manager">Manager</option>
             <option value="teacher">Teacher</option>
             <option value="staff">Staff</option>
+            <option value="student">Student</option>
           </Select>
           <span className="text-[11.5px] font-semibold text-ink-400">
             {filtered.length} of {members.length}
@@ -337,6 +368,26 @@ export function TeamManager({
                         <Icon name="location" size={10} /> {member.branch.name}
                       </span>
                     ) : null}
+                    {member.schoolClass ? (
+                      <span className="inline-flex items-center gap-0.5 rounded-chip bg-brand-50 px-1.5 py-0.5 text-[10px] font-bold text-brand-700">
+                        <Icon name="school" size={9} /> {member.schoolClass.name}
+                      </span>
+                    ) : null}
+                    {member.admissionNo ? (
+                      <span className="rounded-chip bg-ink-100 px-1.5 py-0.5 text-[10px] font-bold text-ink-500">
+                        Adm. {member.admissionNo}
+                      </span>
+                    ) : null}
+                    {member.indexNo ? (
+                      <span className="rounded-chip bg-ink-100 px-1.5 py-0.5 text-[10px] font-bold text-ink-500">
+                        Index {member.indexNo}
+                      </span>
+                    ) : null}
+                    {member.staffId ? (
+                      <span className="rounded-chip bg-ink-100 px-1.5 py-0.5 text-[10px] font-bold text-ink-500">
+                        Staff {member.staffId}
+                      </span>
+                    ) : null}
                     <span className="text-ink-400">joined {member.joinedLabel}</span>
                   </p>
                 </div>
@@ -350,7 +401,7 @@ export function TeamManager({
                         disabled={pending === member.id}
                         className="rounded-full bg-success-100 px-2.5 py-1 text-[11px] font-bold text-success-600 hover:bg-success-500 hover:text-white disabled:opacity-50"
                       >
-                        Activate
+                        {member.status === "invited" ? "Approve" : "Activate"}
                       </button>
                     ) : null}
                     <button
@@ -384,6 +435,7 @@ export function TeamManager({
                       >
                         <option value="teacher">Teacher</option>
                         <option value="staff">Staff</option>
+                        <option value="student">Student</option>
                         <option value="manager">Manager</option>
                         <option value="admin">Admin</option>
                         <option value="owner">Owner</option>
@@ -415,6 +467,55 @@ export function TeamManager({
                       </Select>
                     </Field>
                   </div>
+
+                  {schoolClasses.length > 0 || editRole === "student" || editRole === "teacher" ? (
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                      {schoolClasses.length > 0 ? (
+                        <Field label="Class" htmlFor={`member-class-${member.id}`}>
+                          <Select
+                            id={`member-class-${member.id}`}
+                            value={editClass}
+                            onChange={(event) => setEditClass(event.target.value)}
+                          >
+                            <option value="">No class</option>
+                            {schoolClasses.map((c) => (
+                              <option key={c.id} value={c.id}>
+                                {c.name}
+                              </option>
+                            ))}
+                          </Select>
+                        </Field>
+                      ) : null}
+                      <Field label="Admission no." htmlFor={`member-adm-${member.id}`}>
+                        <Input
+                          id={`member-adm-${member.id}`}
+                          value={editAdmission}
+                          onChange={(event) => setEditAdmission(event.target.value)}
+                          maxLength={40}
+                          placeholder="Students"
+                        />
+                      </Field>
+                      <Field label="Index no." htmlFor={`member-idx-${member.id}`}>
+                        <Input
+                          id={`member-idx-${member.id}`}
+                          value={editIndex}
+                          onChange={(event) => setEditIndex(event.target.value)}
+                          maxLength={40}
+                          placeholder="Exam index"
+                        />
+                      </Field>
+                      <Field label="Staff ID" htmlFor={`member-staff-${member.id}`}>
+                        <Input
+                          id={`member-staff-${member.id}`}
+                          value={editStaff}
+                          onChange={(event) => setEditStaff(event.target.value)}
+                          maxLength={40}
+                          placeholder="Teachers / staff"
+                        />
+                      </Field>
+                    </div>
+                  ) : null}
+
                   <div className="mt-3 flex justify-end gap-2">
                     <Button
                       type="button"

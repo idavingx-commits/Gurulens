@@ -12,6 +12,7 @@ import { notify, writeAudit } from "@/lib/audit";
 import { ADMIN_ROLES, type Role } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { ORG_MEMBER_ROLES, getOrgAccess, getOrgCapacity } from "@/lib/organizations";
+import { normalizeSchoolId } from "@/lib/school";
 
 type Ctx = { params: Promise<{ id: string; memberId: string }> };
 
@@ -19,6 +20,10 @@ const updateSchema = z.object({
   role: z.enum(ORG_MEMBER_ROLES).optional(),
   status: z.enum(["active", "suspended", "invited"]).optional(),
   branchId: z.string().trim().min(1).nullable().optional(),
+  schoolClassId: z.string().trim().min(1).nullable().optional(),
+  admissionNo: z.string().trim().max(40).nullable().optional(),
+  indexNo: z.string().trim().max(40).nullable().optional(),
+  staffId: z.string().trim().max(40).nullable().optional(),
 });
 
 async function requireAdminister(userId: string, userRole: string, organizationId: string) {
@@ -81,7 +86,15 @@ export const PATCH = route(async (req: NextRequest, ctx: Ctx) => {
   const member = await findMember(id, memberId);
   const body = await parseBody(req, updateSchema);
 
-  if (body.role === undefined && body.status === undefined && body.branchId === undefined) {
+  if (
+    body.role === undefined &&
+    body.status === undefined &&
+    body.branchId === undefined &&
+    body.schoolClassId === undefined &&
+    body.admissionNo === undefined &&
+    body.indexNo === undefined &&
+    body.staffId === undefined
+  ) {
     throw new ApiError(400, "Nothing to update.", "empty");
   }
 
@@ -140,12 +153,51 @@ export const PATCH = route(async (req: NextRequest, ctx: Ctx) => {
   const branchId =
     body.branchId === undefined ? undefined : await validateBranch(id, body.branchId);
 
+  // School class must belong to this campus.
+  let schoolClassId: string | null | undefined;
+  if (body.schoolClassId !== undefined) {
+    if (body.schoolClassId === null) {
+      schoolClassId = null;
+    } else {
+      const schoolClass = await db.schoolClass.findFirst({
+        where: { id: body.schoolClassId, organizationId: id },
+        select: { id: true },
+      });
+      if (!schoolClass) throw new ApiError(400, "Choose a valid class.", "invalid_class");
+      schoolClassId = schoolClass.id;
+    }
+  }
+
+  // School identifiers stay unique within the campus.
+  const idFields = {
+    admissionNo: body.admissionNo === undefined ? undefined : body.admissionNo ? normalizeSchoolId(body.admissionNo) : null,
+    indexNo: body.indexNo === undefined ? undefined : body.indexNo ? normalizeSchoolId(body.indexNo) : null,
+    staffId: body.staffId === undefined ? undefined : body.staffId ? normalizeSchoolId(body.staffId) : null,
+  } as const;
+  for (const [field, value] of Object.entries(idFields)) {
+    if (!value) continue;
+    const clash = await db.organizationMember.findFirst({
+      where: {
+        organizationId: id,
+        id: { not: memberId },
+        [field]: value,
+        status: { not: "removed" },
+      },
+      select: { id: true },
+    });
+    if (clash) {
+      throw new ApiError(409, `Another member already uses that ${field === "admissionNo" ? "admission number" : field === "indexNo" ? "index number" : "staff ID"}.`, "id_taken");
+    }
+  }
+
   const updated = await db.organizationMember.update({
     where: { id: memberId },
     data: {
       ...(body.role !== undefined ? { role: body.role } : {}),
       ...(body.status !== undefined ? { status: body.status } : {}),
       ...(branchId !== undefined ? { branchId } : {}),
+      ...(schoolClassId !== undefined ? { schoolClassId } : {}),
+      ...idFields,
       ...(body.status === "active" ? { joinedAt: new Date(), invitedAt: null } : {}),
     },
     select: {
@@ -162,11 +214,16 @@ export const PATCH = route(async (req: NextRequest, ctx: Ctx) => {
     select: { name: true, slug: true },
   });
 
+  const approved = body.status === "active" && member.status === "invited";
   await notify(
     member.userId,
     "campus",
-    `Your role at ${org?.name ?? "a campus"} changed`,
-    `You are now ${updated.role} (${updated.status}).`,
+    approved
+      ? `Your registration at ${org?.name ?? "school"} was approved`
+      : `Your role at ${org?.name ?? "a campus"} changed`,
+    approved
+      ? "You now have full access to your school's timetables and school-only content."
+      : `You are now ${updated.role} (${updated.status}).`,
     org ? `/campus/${org.slug}` : "/campus",
   );
 
@@ -175,6 +232,7 @@ export const PATCH = route(async (req: NextRequest, ctx: Ctx) => {
     role: body.role ?? null,
     status: body.status ?? null,
     branchId: body.branchId ?? null,
+    schoolClassId: body.schoolClassId ?? null,
   });
 
   return ok({ member: updated });

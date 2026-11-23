@@ -16,12 +16,15 @@ import {
   getOrganizationBySlug,
   orgQuotaDefaults,
 } from "@/lib/organizations";
+import { getSchoolClasses } from "@/lib/school";
 import { CampusNav } from "../campus-nav";
 import { RequestOrgVerification } from "../request-verification";
 import { BranchManager } from "./branch-manager";
 import { OrgProfileForm } from "./org-profile-form";
 import { QuotaForm } from "./quota-form";
+import { SchoolClassManager } from "./school-class-manager";
 import { TeamManager } from "./team-manager";
+import { TimetableBuilder } from "./timetable-builder";
 
 type Props = { params: Promise<{ slug: string }> };
 
@@ -34,6 +37,11 @@ const ACTIVITY_META: Record<string, { label: string; icon: string }> = {
   "organization.member.add": { label: "added a team member", icon: "user-plus" },
   "organization.member.update": { label: "updated a team member", icon: "users" },
   "organization.member.remove": { label: "removed a team member", icon: "user" },
+  "school.class.create": { label: "created a school class", icon: "school" },
+  "school.class.update": { label: "updated a school class", icon: "pencil" },
+  "school.class.delete": { label: "deleted a school class", icon: "trash" },
+  "school.timetable.save": { label: "saved a class timetable", icon: "calendar" },
+  "school.join.request": { label: "requested school membership", icon: "user-plus" },
 };
 
 export const metadata: Metadata = {
@@ -50,9 +58,9 @@ export default async function CampusManagePage({ params }: Props) {
   if (!org) notFound();
 
   const access = await getOrgAccess(auth.user.id, auth.user.role, org.id);
-  if (!access.canView) notFound();
+  if (!access.canManage) notFound();
 
-  const [capacity, branches, members, pendingRequest, activity] = await Promise.all([
+  const [capacity, branches, members, pendingRequest, activity, schoolClasses] = await Promise.all([
     getOrgCapacity(org.id),
     db.organizationBranch.findMany({
       where: { organizationId: org.id },
@@ -74,6 +82,10 @@ export default async function CampusManagePage({ params }: Props) {
         role: true,
         status: true,
         joinedAt: true,
+        admissionNo: true,
+        indexNo: true,
+        staffId: true,
+        schoolClass: { select: { id: true, name: true } },
         branch: { select: { id: true, name: true } },
         user: {
           select: { id: true, name: true, email: true, avatarKey: true, role: true },
@@ -86,6 +98,7 @@ export default async function CampusManagePage({ params }: Props) {
       select: { id: true, status: true, actionReason: true, createdAt: true },
     }),
     getCampusActivity(org.id, 8),
+    org.type === "school" ? getSchoolClasses(org.id) : Promise.resolve([]),
   ]);
 
   const logoUrl = org.logoKey ? `/api/media/${org.logoKey}` : null;
@@ -200,6 +213,28 @@ export default async function CampusManagePage({ params }: Props) {
           canEdit={canEdit}
         />
 
+        {org.type === "school" ? (
+          <>
+            <SchoolClassManager
+              organizationId={org.id}
+              classes={schoolClasses.map((c) => ({
+                id: c.id,
+                name: c.name,
+                section: c.section,
+                room: c.room,
+                students: c._count.members,
+              }))}
+              canEdit={canEdit}
+            />
+            {access.canManage ? (
+              <TimetableBuilder
+                organizationId={org.id}
+                classes={schoolClasses.map((c) => ({ id: c.id, name: c.name, room: c.room }))}
+              />
+            ) : null}
+          </>
+        ) : null}
+
         <TeamManager
           organizationId={org.id}
           members={members.map((member) => ({
@@ -208,9 +243,14 @@ export default async function CampusManagePage({ params }: Props) {
             status: member.status,
             joinedLabel: formatDate(member.joinedAt),
             branch: member.branch,
+            admissionNo: member.admissionNo,
+            indexNo: member.indexNo,
+            staffId: member.staffId,
+            schoolClass: member.schoolClass,
             user: member.user,
           }))}
           branches={branches.map((branch) => ({ id: branch.id, name: branch.name }))}
+          schoolClasses={schoolClasses.map((c) => ({ id: c.id, name: c.name }))}
           canEdit={canEdit}
         />
 

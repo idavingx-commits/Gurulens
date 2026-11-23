@@ -44,6 +44,7 @@ export default async function ReelsPage() {
       commentCount: v.commentCount,
       isLiked: v.likedByMe,
       isSaved: v.savedByMe,
+      authorId: v.author.id,
       author: {
         name: v.author.name,
         avatarId: v.author.avatarId,
@@ -67,7 +68,14 @@ export default async function ReelsPage() {
       </div>
 
       {/* Full screen reel viewer */}
-      <ReelViewer reels={reels} />
+      <ReelViewer
+        reels={reels}
+        viewer={
+          user
+            ? { id: user.id, name: user.name, avatarId: user.avatarKey, role: user.role }
+            : null
+        }
+      />
     </div>
   );
 }

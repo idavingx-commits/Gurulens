@@ -81,12 +81,34 @@ export const POST = route(async (req: NextRequest) => {
             data: { moderationStatus: removing ? "removed" : "approved" },
           });
           break;
-        case "comment":
+        case "comment": {
+          const comment = await db.comment.findUnique({
+            where: { id: body.targetId },
+            select: { postId: true, moderationStatus: true },
+          });
           await db.comment.update({
             where: { id: body.targetId },
             data: { moderationStatus: removing ? "removed" : "approved" },
           });
+          // Keep Post.commentCount in sync with visible comments.
+          if (comment && comment.moderationStatus !== (removing ? "removed" : "approved")) {
+            const post = await db.post.findUnique({
+              where: { id: comment.postId },
+              select: { commentCount: true },
+            });
+            if (post) {
+              await db.post.update({
+                where: { id: comment.postId },
+                data: {
+                  commentCount: removing
+                    ? Math.max(0, post.commentCount - 1)
+                    : post.commentCount + 1,
+                },
+              });
+            }
+          }
           break;
+        }
         case "review":
           await db.review.update({
             where: { id: body.targetId },

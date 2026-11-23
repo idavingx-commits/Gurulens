@@ -7,6 +7,7 @@ import { LinkButton } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icons";
 import {
   EmptyState,
+  InfoNote,
   SectionHeader,
   Stat,
   VerifiedTick,
@@ -82,7 +83,8 @@ export default async function CampusDetailPage({ params }: Props) {
   if (!org) notFound();
 
   const access = await getOrgAccess(auth.user.id, auth.user.role, org.id);
-  if (!access.canView) notFound();
+  // Public profile: any signed-in visitor can view the campus overview,
+  // classes, channels and people. School-only tools stay gated below.
 
   const canManage = access.canManage;
   const isStaff =
@@ -237,18 +239,18 @@ export default async function CampusDetailPage({ params }: Props) {
           </div>
         </div>
 
-        <div className="px-5 pb-5">
-          <div className="-mt-9 flex flex-wrap items-end gap-4">
+        <div className="relative z-10 px-5 pb-5">
+          <div className="flex flex-wrap items-start gap-4">
             <Avatar
               name={org.name}
               src={logoUrl}
               size="xl"
               ring
-              className="!rounded-2xl"
+              className="-mt-10 flex-none !rounded-2xl"
             />
-            <div className="min-w-0 flex-1 pb-1">
+            <div className="min-w-0 flex-1 pt-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-extrabold tracking-tight text-ink-900">
+                <h1 className="min-w-0 text-2xl font-extrabold tracking-tight break-words text-ink-900">
                   {org.name}
                 </h1>
                 {org.verifiedStatus === "verified" ? <VerifiedTick /> : null}
@@ -310,6 +312,19 @@ export default async function CampusDetailPage({ params }: Props) {
       </section>
 
       <CampusNav slug={org.slug} active="overview" canManage={canManage} />
+
+      {org.type === "school" && !access.canView ? (
+        <InfoNote icon="school" className="mt-4">
+          You&apos;re viewing the public profile. Timetables and school-only content are for
+          registered students and teachers.
+          <Link
+            href={`/campus/${org.slug}/join`}
+            className="ml-2 font-bold text-brand-700 underline"
+          >
+            Join this school
+          </Link>
+        </InfoNote>
+      ) : null}
 
       {/* Stats */}
       <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">

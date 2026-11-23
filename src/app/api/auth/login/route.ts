@@ -3,6 +3,7 @@ import { type NextRequest } from "next/server";
 import { ApiError, ok, parseBody, route } from "@/lib/api";
 import { createSession, setSessionCookie, verifyPassword } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { isMailConfigured } from "@/lib/mail";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { verifyTotp } from "@/lib/totp";
 import { loginSchema } from "@/lib/validation";
@@ -50,6 +51,16 @@ export const POST = route(async (req: NextRequest) => {
     if (!verifyTotp(user.mfaSecret!, body.totp)) {
       throw new ApiError(401, "Invalid authenticator code. Try again.", "mfa_invalid");
     }
+  }
+
+  // Email verification gate — active once an email provider is configured.
+  // Existing accounts were backfilled as verified by the migration.
+  if (!user.emailVerified && isMailConfigured()) {
+    throw new ApiError(
+      403,
+      "Please verify your email address to continue.",
+      "email_unverified",
+    );
   }
 
   const session = await createSession(user.id, {

@@ -8,10 +8,10 @@ import { ADMIN_ROLES, type Role } from "./constants";
 import type { Prisma } from "@prisma/client";
 
 export type OrganizationType = "institute" | "school";
-export type OrgMemberRole = "owner" | "admin" | "manager" | "teacher" | "staff";
+export type OrgMemberRole = "owner" | "admin" | "manager" | "teacher" | "staff" | "student";
 export type VerificationStatus = "none" | "pending" | "in_review" | "verified" | "rejected" | "suspended";
 
-export const ORG_MEMBER_ROLES = ["owner", "admin", "manager", "teacher", "staff"] as const;
+export const ORG_MEMBER_ROLES = ["owner", "admin", "manager", "teacher", "staff", "student"] as const;
 export type OrgMemberRoleOption = (typeof ORG_MEMBER_ROLES)[number];
 
 export const ORG_MEMBER_STATUSES = ["active", "invited", "suspended", "removed"] as const;

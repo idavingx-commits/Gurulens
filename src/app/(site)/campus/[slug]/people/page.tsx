@@ -20,7 +20,7 @@ type Props = {
   searchParams: Promise<{ q?: string; role?: string; branch?: string }>;
 };
 
-const ROLES = ["owner", "admin", "manager", "teacher", "staff"] as const;
+const ROLES = ["owner", "admin", "manager", "teacher", "staff", "student"] as const;
 type RoleFilter = (typeof ROLES)[number];
 
 const ROLE_META: Record<string, { label: string; tone: string }> = {
@@ -29,6 +29,7 @@ const ROLE_META: Record<string, { label: string; tone: string }> = {
   manager: { label: "Manager", tone: "bg-success-100 text-success-600" },
   teacher: { label: "Teacher", tone: "bg-ink-100 text-ink-600" },
   staff: { label: "Staff", tone: "bg-ink-100 text-ink-500" },
+  student: { label: "Student", tone: "bg-warn-100 text-warn-600" },
 };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -67,7 +68,8 @@ export default async function CampusPeoplePage({ params, searchParams }: Props) 
   const campusSlug = org.slug;
 
   const access = await getOrgAccess(auth.user.id, auth.user.role, org.id);
-  if (!access.canView) notFound();
+  // Public directory: any signed-in visitor can see the campus people list.
+  // Emails and school IDs stay visible to managers only.
 
   const query = await searchParams;
   const q = (query.q ?? "").trim();
@@ -101,6 +103,10 @@ export default async function CampusPeoplePage({ params, searchParams }: Props) 
         role: true,
         status: true,
         joinedAt: true,
+        admissionNo: true,
+        indexNo: true,
+        staffId: true,
+        schoolClass: { select: { id: true, name: true } },
         branch: { select: { id: true, name: true } },
         user: {
           select: {
@@ -189,7 +195,11 @@ export default async function CampusPeoplePage({ params, searchParams }: Props) 
           }
           icon="crown"
         />
-        <Stat label="Staff" value={roleCount.get("staff") ?? 0} icon="award" />
+        <Stat
+          label={org.type === "school" ? "Students" : "Staff"}
+          value={roleCount.get(org.type === "school" ? "student" : "staff") ?? 0}
+          icon={org.type === "school" ? "school" : "award"}
+        />
       </div>
 
       <form method="get" className="mt-5 flex flex-wrap items-center gap-2">
@@ -358,6 +368,21 @@ export default async function CampusPeoplePage({ params, searchParams }: Props) 
                     {member.user.teacherProfile?.tagline ? (
                       <span className="max-w-full truncate text-ink-500">
                         {member.user.teacherProfile.tagline}
+                      </span>
+                    ) : null}
+                    {member.schoolClass ? (
+                      <span className="inline-flex items-center gap-0.5 rounded-chip bg-brand-50 px-1.5 py-0.5 text-[10px] font-bold text-brand-700">
+                        <Icon name="school" size={9} /> {member.schoolClass.name}
+                      </span>
+                    ) : null}
+                    {canSeeEmails && member.admissionNo ? (
+                      <span className="rounded-chip bg-ink-100 px-1.5 py-0.5 text-[10px] font-bold text-ink-500">
+                        Adm. {member.admissionNo}
+                      </span>
+                    ) : null}
+                    {canSeeEmails && member.staffId ? (
+                      <span className="rounded-chip bg-ink-100 px-1.5 py-0.5 text-[10px] font-bold text-ink-500">
+                        Staff {member.staffId}
                       </span>
                     ) : null}
                     {member.branch ? (

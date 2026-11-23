@@ -17,11 +17,18 @@ import {
   getCampusWeeklySchedule,
 } from "@/lib/campus";
 import { getOrgAccess, getOrganizationBySlug } from "@/lib/organizations";
+import {
+  canViewSchoolContent,
+  getSchoolClasses,
+  getSchoolContext,
+  getSchoolTimetable,
+  SCHOOL_DAYS,
+} from "@/lib/school";
 import { CampusNav } from "../campus-nav";
 
 type Props = {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ branch?: string; range?: string }>;
+  searchParams: Promise<{ branch?: string; range?: string; class?: string }>;
 };
 
 const RANGES = [
@@ -72,9 +79,235 @@ export default async function CampusTimetablePage({ params, searchParams }: Prop
   const campusSlug = org.slug;
 
   const access = await getOrgAccess(auth.user.id, auth.user.role, org.id);
+  const query = await searchParams;
+
+  // -------------------------------------------------------------------------
+  // Schools: weekly period grid, members only.
+  // -------------------------------------------------------------------------
+  if (org.type === "school") {
+    const context = await getSchoolContext(auth.user.id, org.id);
+    const allowed = canViewSchoolContent(auth.user.role, context.isMember);
+    const classes = await getSchoolClasses(org.id);
+
+    const ownClassId = context.membership?.schoolClassId ?? null;
+    const selectedClassId =
+      classes.find((c) => c.id === query.class)?.id ??
+      (ownClassId && classes.some((c) => c.id === ownClassId) ? ownClassId : null) ??
+      classes[0]?.id ??
+      null;
+
+    const entries =
+      allowed && selectedClassId ? await getSchoolTimetable(org.id, selectedClassId) : [];
+
+    const cellMap = new Map(entries.map((e) => [`${e.dayOfWeek}:${e.period}`, e]));
+    const maxPeriod = Math.max(8, ...entries.map((e) => e.period));
+    const periods = Array.from({ length: maxPeriod }, (_, i) => i + 1);
+    const hasWeekend = entries.some((e) => e.dayOfWeek >= 6);
+    const days = SCHOOL_DAYS.filter((d) => d.day <= 5 || (hasWeekend && d.day >= 6));
+    const selectedClass = classes.find((c) => c.id === selectedClassId) ?? null;
+
+    return (
+      <div className="mx-auto w-full max-w-5xl px-4 pt-6 pb-12 sm:px-6">
+        <div className="mb-1">
+          <Link
+            href={`/campus/${org.slug}`}
+            className="inline-flex items-center gap-1 text-[12px] font-bold text-ink-400 transition-colors hover:text-brand-600"
+          >
+            <Icon name="arrow-left" size={13} /> Back to {org.name}
+          </Link>
+        </div>
+
+        <CampusNav slug={org.slug} active="timetable" canManage={access.canManage} />
+
+        <header className="mt-6 flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-extrabold tracking-tight text-ink-900">
+              School timetable
+            </h1>
+            <p lang="si" className="font-si mt-1 text-[13px] font-semibold leading-[1.85] text-ink-500">
+              {org.name} — සතියේ පන්ති කාලසටහන. විද්‍යාලයේ සිසුන්ට සහ ගුරුවරුන්ට පමණි.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            {access.canManage ? (
+              <LinkButton href={`/campus/${org.slug}/manage#timetable`} size="sm">
+                <Icon name="pencil" size={14} /> Edit timetable
+              </LinkButton>
+            ) : null}
+            <ShareButton
+              path={`/campus/${org.slug}`}
+              title={`${org.name} · GuruLens Campus`}
+              text={`Visit ${org.name} on GuruLens Campus`}
+              label="Share school"
+            />
+          </div>
+        </header>
+
+        {!allowed ? (
+          <div className="mt-6">
+            <InfoNote icon="lock" tone="warn">
+              <p className="font-bold">This timetable is for {org.name} students and teachers only.</p>
+              <p className="mt-1">
+                Anyone can view the school profile and published posts, but class timetables are
+                private to the school. Register with your admission number (student) or staff ID
+                (teacher) to get access.
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {context.isPending ? (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-warn-100 px-3.5 py-1.5 text-[12px] font-bold text-warn-600">
+                    <Icon name="clock" size={13} /> Your registration is awaiting approval
+                  </span>
+                ) : (
+                  <LinkButton href={`/campus/${org.slug}/join`} size="sm">
+                    <Icon name="user-plus" size={14} /> Join this school
+                  </LinkButton>
+                )}
+                <LinkButton href={`/campus/${org.slug}`} variant="outline" size="sm">
+                  <Icon name="grid" size={14} /> View public profile
+                </LinkButton>
+              </div>
+            </InfoNote>
+          </div>
+        ) : classes.length === 0 ? (
+          <div className="mt-6">
+            <EmptyState
+              icon="calendar"
+              title="No classes set up yet"
+              description={
+                access.canManage
+                  ? "Create grade/section groups (like 10-A) and build their weekly timetables from the manage page."
+                  : "The school has not published its class groups yet. Check back soon."
+              }
+              action={
+                access.canManage ? (
+                  <LinkButton href={`/campus/${org.slug}/manage#timetable`} size="sm">
+                    <Icon name="plus" size={14} /> Set up classes
+                  </LinkButton>
+                ) : undefined
+              }
+            />
+          </div>
+        ) : (
+          <>
+            {/* Class selector */}
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              {classes.map((c) => (
+                <Link
+                  key={c.id}
+                  href={`/campus/${campusSlug}/timetable?class=${c.id}`}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[12px] font-bold transition-colors ${
+                    selectedClassId === c.id
+                      ? "border-brand-600 bg-brand-600 text-white shadow-sm"
+                      : "border-ink-200 bg-white/80 text-ink-600 hover:border-brand-300 hover:text-brand-700"
+                  }`}
+                >
+                  <Icon name="school" size={12} />
+                  {c.name}
+                  {ownClassId === c.id ? (
+                    <span
+                      className={`rounded-full px-1.5 py-0.5 text-[9px] font-black uppercase ${
+                        selectedClassId === c.id ? "bg-white/20" : "bg-brand-50 text-brand-600"
+                      }`}
+                    >
+                      My class
+                    </span>
+                  ) : null}
+                </Link>
+              ))}
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Stat label="Class" value={selectedClass?.name ?? "—"} icon="school" />
+              <Stat label="Students" value={selectedClass?._count.members ?? 0} icon="users" />
+              <Stat label="Periods / day" value={maxPeriod} icon="clock" />
+              <Stat
+                label="Room"
+                value={selectedClass?.room ?? "—"}
+                icon="location"
+              />
+            </div>
+
+            {/* Period grid */}
+            <div className="card mt-5 overflow-x-auto">
+              <table className="w-full min-w-[720px] border-collapse text-left">
+                <thead>
+                  <tr className="bg-ink-50/80">
+                    <th className="w-16 px-3 py-2.5 text-[10.5px] font-black tracking-wide text-ink-400 uppercase">
+                      Period
+                    </th>
+                    {days.map((d) => (
+                      <th
+                        key={d.day}
+                        className="px-3 py-2.5 text-[11px] font-extrabold tracking-wide text-ink-700 uppercase"
+                      >
+                        {d.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {periods.map((period) => (
+                    <tr key={period} className="border-t border-ink-100">
+                      <td className="px-3 py-2 align-top text-[12px] font-extrabold text-ink-400 tabular-nums">
+                        {period}
+                      </td>
+                      {days.map((d) => {
+                        const entry = cellMap.get(`${d.day}:${period}`);
+                        return (
+                          <td key={d.day} className="px-2 py-2 align-top">
+                            {entry ? (
+                              <div className="rounded-xl bg-brand-50/70 px-2.5 py-2">
+                                <p className="text-[12px] leading-snug font-extrabold text-ink-900">
+                                  {entry.subject}
+                                </p>
+                                {entry.teacher ? (
+                                  <p className="mt-0.5 truncate text-[10.5px] font-semibold text-ink-500">
+                                    {entry.teacher}
+                                  </p>
+                                ) : null}
+                                <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-[9.5px] font-bold text-brand-600">
+                                  {entry.startTime ? (
+                                    <span className="tabular-nums">
+                                      {entry.startTime}
+                                      {entry.endTime ? `–${entry.endTime}` : ""}
+                                    </span>
+                                  ) : null}
+                                  {entry.room ? (
+                                    <span className="inline-flex items-center gap-0.5 text-ink-400">
+                                      <Icon name="location" size={9} />
+                                      {entry.room}
+                                    </span>
+                                  ) : null}
+                                </p>
+                              </div>
+                            ) : (
+                              <span className="block px-2.5 py-2 text-[11px] text-ink-200">—</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {entries.length === 0 ? (
+              <p className="mt-3 text-[12px] font-semibold text-ink-400">
+                No periods have been added for {selectedClass?.name ?? "this class"} yet.
+                {access.canManage ? " Use “Edit timetable” to build the week." : ""}
+              </p>
+            ) : null}
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Institutes: the original session-based timetable.
+  // -------------------------------------------------------------------------
   if (!access.canView) notFound();
 
-  const query = await searchParams;
   const branches = org.branches;
   const branchId = branches.some((branch) => branch.id === query.branch) ? query.branch : undefined;
   const range = RANGES.find((item) => String(item.days) === query.range)?.days ?? 14;
