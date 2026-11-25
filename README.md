@@ -60,7 +60,7 @@
 
 <div align="center">
   <a href="https://gurulens.us">
-    <img src="https://raw.githubusercontent.com/idavingx-commits/Gurulens/main/public/brand/og-default.png" width="86%" alt="GuruLens official website brand preview" />
+    <img src="https://raw.githubusercontent.com/idavingx-commits/Gurulens/refs/heads/main/Untitled-1fffffffffffffffffffffffffffffff.png" width="86%" alt="GuruLens official website brand preview" />
   </a>
   <br />
   <sub>Original visual hosted by the GuruLens GitHub repository. Click to visit the website.</sub>
