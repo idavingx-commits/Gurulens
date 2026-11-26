@@ -7,6 +7,7 @@ import { Icon } from "@/components/ui/icons";
 import { getAuth } from "@/lib/auth";
 import { canManageChannel, getChannelBySlug } from "@/lib/channels";
 import { ChannelSettingsForm } from "./channel-settings-form";
+import { ChannelDangerZone } from "./danger-zone";
 
 export const metadata: Metadata = { title: "Channel settings" };
 
@@ -58,6 +59,11 @@ export default async function ChannelSettingsPage({ params }: Props) {
         initialVisibility={channel.visibility}
         avatarUrl={channel.avatarKey ? `/api/media/${channel.avatarKey}` : null}
         coverUrl={channel.coverKey ? `/api/media/${channel.coverKey}` : null}
+      />
+      <ChannelDangerZone
+        slug={slug}
+        followerCount={channel.followerCount}
+        isCampusChannel={channel.organizationId !== null}
       />
     </div>
   );

@@ -10,10 +10,22 @@ import { getAuth } from "@/lib/auth";
 import { getPlatformStats, getTopReviews } from "@/lib/data";
 import { truncate } from "@/lib/format";
 
-const BULLETS = [
-  { icon: "shield-check", text: "Verified badge සහිත ගුරුවරුන් — අපිම පරීක්ෂා කරලා." },
-  { icon: "star", text: "Enrollment code එකකින් තහවුරු කළ සැබෑ reviews පමණයි." },
-  { icon: "film", text: "Lessons, reels, videos සහ quizzes — සම්පූර්ණයෙන්ම නොමිලේ." },
+const HIGHLIGHTS = [
+  {
+    icon: "shield-check",
+    title: "Verified teachers, real classrooms",
+    text: "Badges are granted after checks. Enrollment codes keep reviews honest.",
+  },
+  {
+    icon: "sparkles",
+    title: "Lessons, reels, quizzes & your own LMS",
+    text: "Everything you need to teach, share and track progress — in one place.",
+  },
+  {
+    icon: "crown",
+    title: "100% free during launch",
+    text: "Every plan is free while we finish local payments. No card needed today.",
+  },
 ];
 
 export default async function AuthLayout({ children }: LayoutProps<"/">) {
@@ -24,184 +36,166 @@ export default async function AuthLayout({ children }: LayoutProps<"/">) {
   const quote = spotlight[0] ?? null;
 
   return (
-    <div className="relative isolate flex min-h-dvh flex-col overflow-hidden bg-gradient-to-br from-slate-50 via-blue-50/30 to-violet-50/20">
-      {/* Simple corner decorations - won't overlap content */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
-        {/* Top-left decoration */}
-        <div className="absolute -top-20 -left-20 size-40 rounded-full bg-gradient-to-br from-brand-400/20 to-accent-400/10 blur-3xl" />
-        {/* Top-right decoration */}
-        <div className="absolute -top-32 -right-32 size-64 rounded-full bg-gradient-to-bl from-accent-400/15 to-brand-400/10 blur-3xl" />
-        {/* Bottom-left decoration */}
-        <div className="absolute -bottom-32 -left-32 size-64 rounded-full bg-gradient-to-tr from-brand-400/15 to-accent-400/10 blur-3xl" />
-        {/* Bottom-right decoration */}
-        <div className="absolute -bottom-20 -right-20 size-40 rounded-full bg-gradient-to-tl from-accent-400/20 to-brand-400/10 blur-3xl" />
-        
-        {/* Subtle grid pattern */}
-        <div 
-          className="absolute inset-0 opacity-[0.015]"
-          style={{
-            backgroundImage: `radial-gradient(circle at 1px 1px, #0a1b3d 1px, transparent 0)`,
-            backgroundSize: "40px 40px",
-          }}
-        />
-      </div>
+    <div className="min-h-dvh bg-[#eef4ff] lg:grid lg:grid-cols-[1.06fr_1fr]">
+      {/* Brand panel */}
+      <aside className="relative hidden overflow-hidden bg-ink-900 text-white lg:flex lg:flex-col">
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+          <div className="absolute -top-32 -left-24 size-[28rem] rounded-full bg-brand-500/25 blur-[110px]" />
+          <div className="absolute top-1/3 -right-32 size-[26rem] rounded-full bg-accent-500/25 blur-[120px]" />
+          <div className="absolute -bottom-40 left-1/4 size-[30rem] rounded-full bg-brand-400/15 blur-[130px]" />
+          <div
+            className="absolute inset-0 opacity-[0.07]"
+            style={{
+              backgroundImage:
+                "linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px)",
+              backgroundSize: "54px 54px",
+            }}
+          />
+          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+        </div>
 
-      {/* Small floating shapes - corners only, very subtle */}
-      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10">
-        {/* Book emoji - top left corner */}
-        <div className="absolute top-8 left-6 hidden animate-float-slow text-4xl opacity-20 lg:block">📚</div>
-        {/* Graduation cap - top right corner */}
-        <div className="absolute top-12 right-8 hidden animate-float-slower text-3xl opacity-20 lg:block">🎓</div>
-        {/* Lightbulb - bottom left */}
-        <div className="absolute bottom-20 left-8 hidden animate-float-slow text-3xl opacity-20 lg:block">💡</div>
-        {/* Apple - bottom right */}
-        <div className="absolute bottom-12 right-10 hidden animate-float-slower text-3xl opacity-20 lg:block">🍎</div>
-      </div>
+        <div className="relative flex flex-1 flex-col p-10 xl:p-14">
+          <Logo dark />
 
-      {/* Header */}
-      <header className="relative z-50 flex items-center justify-between px-6 py-5 sm:px-10">
-        <Logo />
-        <Link
-          href="/"
-          className="flex items-center gap-2 rounded-full bg-white px-4 py-2 text-[13px] font-bold text-ink-600 shadow-md ring-1 ring-ink-100 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:text-brand-600"
-        >
-          <Icon name="arrow-left" size={16} />
-          Back to home
-        </Link>
-      </header>
+          <div className="mt-12 max-w-lg">
+            <span className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-[11px] font-bold tracking-[0.14em] uppercase backdrop-blur-md">
+              <span className="size-1.5 animate-pulse rounded-full bg-success-500" />
+              Sri Lanka&apos;s teaching platform
+            </span>
 
-      {/* Main content */}
-      <main className="relative z-10 mx-auto flex w-full max-w-7xl flex-1 items-start px-4 py-6 sm:px-8 sm:py-10 lg:py-12">
-        <div className="grid w-full items-start gap-16 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,480px)]">
-          {/* Brand showcase — desktop only */}
-          <aside className="hidden lg:sticky lg:top-10 lg:block">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2.5 rounded-full bg-white px-4 py-2 shadow-md ring-1 ring-brand-100">
-              <span className="flex size-7 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-accent-500 text-white shadow-sm">
-                <Icon name="sparkles" size={14} />
-              </span>
-              <span className="text-[13px] font-bold text-ink-700">
-                Sri Lanka&apos;s #1 Teacher Platform
-              </span>
-              <VerifiedTick className="size-4" />
-            </div>
-
-            {/* Headline */}
-            <h2 className="mt-8 text-[44px] leading-[1.08] font-black tracking-tight text-ink-900">
-              Learn from teachers
+            <h1 className="mt-6 text-[46px] leading-[1.04] font-black tracking-[-0.03em] xl:text-[54px]">
+              Teach boldly.
               <br />
-              <span className="text-shimmer bg-gradient-to-r from-brand-600 via-accent-500 to-brand-500 bg-clip-text text-transparent">
-                you can trust.
+              <span className="bg-gradient-to-r from-brand-300 via-white to-accent-300 bg-clip-text text-transparent">
+                Learn deeply.
               </span>
-            </h2>
+            </h1>
 
-            {/* Sinhala subtitle */}
             <p
               lang="si"
-              className="font-si mt-5 max-w-md text-[16px] leading-[1.9] font-semibold text-ink-600"
+              className="font-si mt-5 max-w-md text-[15px] leading-[1.9] font-semibold text-white/70"
             >
-              තහවුරු කළ ගුරුවරුන්, සැබෑ සිසු reviews, පාඩම් videos සහ quizzes — ඔබේ ඉගෙනීමට
-              විශ්වාසනීය තැනක්.
+              තහවුරු කළ ගුරුවරුන්, සැබෑ සිසු සමාලෝචන, පාඩම් වීඩියෝ සහ quizzes — ඔබේ ඉගෙනීමට
+              විශ්වාසනීයම තැන.
             </p>
 
-            {/* Stats */}
-            <div className="mt-8 flex gap-8">
+            <div className="mt-8 flex items-center gap-8">
               <BigStat value={stats.teacherCount} label="Teachers" icon="users" />
+              <span className="h-9 w-px bg-white/15" />
               <BigStat value={stats.reviewCount} label="Reviews" icon="star" />
+              <span className="h-9 w-px bg-white/15" />
               <BigStat value={stats.districtCount} label="Districts" icon="location" />
             </div>
-
-            {/* Feature bullets */}
-            <ul className="mt-10 space-y-4">
-              {BULLETS.map((b) => (
-                <li key={b.text} className="flex items-start gap-4">
-                  <span className="flex size-10 flex-none items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500/10 to-accent-500/10 text-brand-600 ring-1 ring-brand-200/50">
-                    <Icon name={b.icon} size={20} />
-                  </span>
-                  <span
-                    lang="si"
-                    className="font-si pt-2 text-[14px] leading-[1.85] font-semibold text-ink-600"
-                  >
-                    {b.text}
-                  </span>
-                </li>
-              ))}
-            </ul>
-
-            {/* Quote card */}
-            {quote ? (
-              <figure className="mt-10 max-w-md rounded-3xl bg-white p-6 shadow-lg ring-1 ring-ink-100">
-                {/* Stars */}
-                <div className="flex items-center gap-1">
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <Icon key={n} name="star" size={18} className="text-warn-500" />
-                  ))}
-                </div>
-
-                {/* Quote */}
-                <blockquote className="mt-4 text-[15px] leading-[1.85] text-ink-700">
-                  &ldquo;{truncate(quote.feedback, 150)}&rdquo;
-                </blockquote>
-
-                {/* Author */}
-                <figcaption className="mt-5 flex items-center gap-3 border-t border-ink-100 pt-5">
-                  <Avatar
-                    name={quote.author.name}
-                    src={quote.author.avatarKey ? `/api/media/${quote.author.avatarKey}` : null}
-                    size="md"
-                    className="ring-2 ring-white shadow-md"
-                  />
-                  <div className="min-w-0">
-                    <div className="font-bold text-ink-900">{quote.author.name}</div>
-                    {quote.teacher.teacherProfile ? (
-                      <Link
-                        href={`/teacher/${quote.teacher.teacherProfile.handle}`}
-                        className="text-[13px] text-ink-400 transition-colors hover:text-brand-600"
-                      >
-                        Student of {quote.teacher.name}
-                      </Link>
-                    ) : null}
-                  </div>
-                </figcaption>
-              </figure>
-            ) : null}
-          </aside>
-
-          {/* Form column - solid white background for clarity */}
-          <div className="mx-auto w-full max-w-xl lg:mx-0">
-            {children}
           </div>
-        </div>
-      </main>
 
-      {/* Footer */}
-      <footer className="relative z-10 flex items-center justify-center gap-3 px-5 py-6">
-        <span className="text-[11px] font-bold tracking-widest text-ink-400 uppercase">
-          Built by
-        </span>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/brand/ineshdev-dark.png"
-          alt="IneshDev (Pvt) Ltd"
-          className="h-6 w-auto opacity-70 transition-opacity hover:opacity-100"
-          width={120}
-          height={30}
+          <ul className="mt-10 grid max-w-lg gap-2.5">
+            {HIGHLIGHTS.map((item) => (
+              <li
+                key={item.title}
+                className="flex items-start gap-3.5 rounded-2xl border border-white/10 bg-white/[0.06] p-4 backdrop-blur-md transition-colors hover:bg-white/[0.09]"
+              >
+                <span className="flex size-10 flex-none items-center justify-center rounded-xl bg-gradient-to-br from-brand-400/30 to-accent-400/20 text-brand-200 ring-1 ring-white/10">
+                  <Icon name={item.icon} size={19} />
+                </span>
+                <span>
+                  <span className="block text-[13.5px] font-bold text-white">{item.title}</span>
+                  <span className="mt-0.5 block text-[12px] leading-relaxed text-white/55">
+                    {item.text}
+                  </span>
+                </span>
+              </li>
+            ))}
+          </ul>
+
+          {quote ? (
+            <figure className="mt-auto max-w-lg rounded-2xl border border-white/10 bg-white/[0.07] p-5 backdrop-blur-md">
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Icon key={n} name="star" size={14} className="text-amber-300" />
+                ))}
+                <span className="ml-2 text-[10.5px] font-bold tracking-wider text-white/45 uppercase">
+                  From a real review
+                </span>
+              </div>
+              <blockquote className="mt-2.5 text-[13px] leading-[1.75] text-white/80">
+                &ldquo;{truncate(quote.feedback, 140)}&rdquo;
+              </blockquote>
+              <figcaption className="mt-3 flex items-center gap-2.5">
+                <Avatar
+                  name={quote.author.name}
+                  src={quote.author.avatarKey ? `/api/media/${quote.author.avatarKey}` : null}
+                  size="sm"
+                />
+                <span className="text-[12px] font-bold text-white/90">{quote.author.name}</span>
+                <VerifiedTick className="size-4" />
+              </figcaption>
+            </figure>
+          ) : null}
+        </div>
+      </aside>
+
+      {/* Form panel */}
+      <div className="relative flex min-h-dvh flex-col bg-[#f7f9ff]">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-gradient-to-b from-brand-100/70 via-brand-50/30 to-transparent"
         />
-      </footer>
+
+        <header className="relative z-10 flex items-center justify-between px-5 py-5 sm:px-8 lg:px-10">
+          <Logo className="lg:hidden" />
+          <span className="hidden lg:block" />
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 rounded-full border border-ink-200/80 bg-white/70 px-3.5 py-2 text-[12px] font-bold text-ink-500 shadow-sm backdrop-blur-md transition-all hover:-translate-y-0.5 hover:border-brand-200 hover:text-brand-700 hover:shadow-md"
+          >
+            <Icon name="arrow-left" size={14} />
+            Back to home
+          </Link>
+        </header>
+
+        <main className="relative z-10 flex flex-1 items-center justify-center px-4 py-6 sm:px-8 sm:py-10">
+          <div className="w-full max-w-[520px]">{children}</div>
+        </main>
+
+        <footer className="relative z-10 flex flex-col items-center gap-3 px-5 py-6 sm:flex-row sm:justify-between sm:px-10">
+          <div className="flex items-center gap-3">
+            <span className="text-[10px] font-bold tracking-[0.16em] text-ink-400 uppercase">
+              Built by
+            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/brand/ineshdev-dark.png"
+              alt="IneshDev (Pvt) Ltd"
+              className="h-5 w-auto opacity-60 transition-opacity hover:opacity-100"
+              width={120}
+              height={30}
+            />
+          </div>
+          <div className="flex items-center gap-3 text-[10.5px] font-semibold text-ink-400">
+            <span className="inline-flex items-center gap-1">
+              <Icon name="lock" size={11} /> Secure sign-in
+            </span>
+            <span className="size-1 rounded-full bg-ink-300" />
+            <span className="inline-flex items-center gap-1">
+              <Icon name="check-circle" size={11} /> Free during launch
+            </span>
+          </div>
+        </footer>
+      </div>
     </div>
   );
 }
 
 function BigStat({ value, label, icon }: { value: number; label: string; icon: string }) {
   return (
-    <div className="text-center">
-      <div className="flex items-center justify-center gap-2">
-        <Icon name={icon} size={18} className="text-brand-500" />
-        <span className="text-3xl font-black tabular-nums text-ink-900">
+    <div>
+      <div className="flex items-center gap-1.5">
+        <Icon name={icon} size={15} className="text-brand-300" />
+        <span className="text-[26px] leading-none font-black tabular-nums tracking-tight text-white">
           <CountUp value={value} />
         </span>
       </div>
-      <div className="mt-1 text-[11px] font-bold tracking-wider text-ink-400 uppercase">
+      <div className="mt-1.5 text-[10px] font-bold tracking-[0.12em] text-white/45 uppercase">
         {label}
       </div>
     </div>

@@ -14,7 +14,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   if (!user) redirect("/login?next=/admin");
   if (!ADMIN_ROLES.includes(user.role)) redirect("/dashboard");
 
-  const [pendingVerifications, openReports, pendingOrganizations, pendingChannels] =
+  const [pendingVerifications, openReports, pendingOrganizations, pendingChannels, pendingDeletions] =
     await Promise.all([
       db.verificationRequest.count({
         where: { status: { in: ["pending", "in_review", "more_info"] } },
@@ -26,6 +26,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
       db.channelVerificationRequest.count({
         where: { status: { in: ["pending", "in_review"] } },
       }),
+      db.deletionRequest.count({ where: { status: "pending" } }),
     ]);
 
   return (
@@ -52,6 +53,7 @@ export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
         openReports={openReports}
         pendingOrganizations={pendingOrganizations}
         pendingChannels={pendingChannels}
+        pendingDeletions={pendingDeletions}
         isSuperAdmin={SUPER_ADMIN_ROLES.includes(user.role)}
       />
       <div className="reveal mt-6">{children}</div>

@@ -10,6 +10,7 @@ import { getAuth } from "@/lib/auth";
 import { getCampusActivity } from "@/lib/campus";
 import { db } from "@/lib/db";
 import { formatDate, timeAgo } from "@/lib/format";
+import { getLmsWorkspaceForOrganization } from "@/lib/lms";
 import {
   getOrgAccess,
   getOrgCapacity,
@@ -19,6 +20,8 @@ import {
 import { getSchoolClasses } from "@/lib/school";
 import { CampusNav } from "../campus-nav";
 import { RequestOrgVerification } from "../request-verification";
+import { LmsClaimCard } from "@/components/lms/LmsClaimCard";
+import { CampusDeletionCard } from "@/components/campus/CampusDeletionCard";
 import { BranchManager } from "./branch-manager";
 import { OrgProfileForm } from "./org-profile-form";
 import { QuotaForm } from "./quota-form";
@@ -104,6 +107,8 @@ export default async function CampusManagePage({ params }: Props) {
   const logoUrl = org.logoKey ? `/api/media/${org.logoKey}` : null;
   const coverUrl = org.coverKey ? `/api/media/${org.coverKey}` : null;
   const canEdit = access.canAdminister;
+
+  const existingWorkspace = await getLmsWorkspaceForOrganization(org.id);
 
   return (
     <div className="mx-auto w-full max-w-4xl px-4 pt-6 pb-12 sm:px-6">
@@ -288,6 +293,12 @@ export default async function CampusManagePage({ params }: Props) {
           )}
         </section>
 
+        <LmsClaimCard
+          organizationId={org.id}
+          organizationName={org.name}
+          existing={existingWorkspace ? { subdomain: existingWorkspace.subdomain } : null}
+        />
+
         <section className="card p-5">
           <SectionHeader title="Verification" subtitle="Trust badge for your campus" />
           <div className="flex items-center gap-2">
@@ -333,6 +344,14 @@ export default async function CampusManagePage({ params }: Props) {
             </p>
           )}
         </section>
+
+        {canEdit ? (
+          <CampusDeletionCard
+            organizationId={org.id}
+            organizationName={org.name}
+            memberCount={members.length}
+          />
+        ) : null}
       </div>
     </div>
   );

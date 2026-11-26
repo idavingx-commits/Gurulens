@@ -300,6 +300,56 @@ export const PLAN_FEATURE_GROUPS: Array<{
     ],
   },
   {
+    id: "lms",
+    title: "Your own LMS",
+    description: "A branded learning hub on your own GuruLens subdomain.",
+    icon: "school",
+    features: [
+      {
+        key: "lms_workspace",
+        label: "LMS subdomain",
+        description: "A complete learning hub at yourname.gurulens.us.",
+        groups: ["teacher", "institute", "campus"],
+      },
+      {
+        key: "course_builder",
+        label: "Course builder",
+        description: "Build courses with modules and ordered lessons.",
+        groups: ["teacher", "institute", "campus"],
+      },
+      {
+        key: "lesson_player",
+        label: "Lesson player & progress",
+        description: "Video, notes and completion tracking per lesson.",
+        groups: ["teacher", "institute", "campus"],
+      },
+      {
+        key: "student_progress",
+        label: "Student progress",
+        description: "See who is enrolled, what they finished and what is next.",
+        groups: ["teacher", "institute", "campus"],
+      },
+      {
+        key: "course_announcements",
+        label: "Course announcements",
+        description: "Pin updates to every student's LMS dashboard.",
+        groups: ["teacher", "institute", "campus"],
+      },
+      {
+        key: "lms_analytics",
+        label: "Learning analytics",
+        description: "Enrolment, completion and engagement trends for your hub.",
+        groups: ["institute", "campus"],
+      },
+      {
+        key: "lms_certificates",
+        label: "Completion certificates",
+        description: "Award a shareable certificate when a course is completed.",
+        groups: ["institute", "campus"],
+      },
+    ],
+  },
+  {
     id: "platform",
     title: "Platform & support",
     description: "Extra power for teams that have outgrown the basics.",
@@ -370,7 +420,10 @@ export type PlanLimitKey =
   | "teachers"
   | "branches"
   | "students"
-  | "grades";
+  | "grades"
+  | "lms_courses"
+  | "lms_lessons"
+  | "lms_students";
 
 export const PLAN_LIMITS: Array<{
   key: PlanLimitKey;
@@ -436,6 +489,27 @@ export const PLAN_LIMITS: Array<{
     shortLabel: "grades",
     icon: "school",
     hint: "Grades you can organise",
+  },
+  {
+    key: "lms_courses",
+    label: "LMS courses",
+    shortLabel: "courses",
+    icon: "book-open",
+    hint: "Courses in your own LMS workspace",
+  },
+  {
+    key: "lms_lessons",
+    label: "LMS lessons",
+    shortLabel: "lessons",
+    icon: "play",
+    hint: "Lessons across all LMS courses",
+  },
+  {
+    key: "lms_students",
+    label: "LMS learners",
+    shortLabel: "learners",
+    icon: "users",
+    hint: "Students enrolled in your LMS courses",
   },
 ];
 
@@ -513,5 +587,18 @@ export function planPriceLabel(priceLkr: number, billingCycle: string): {
 
 /** Presentational highlight; admins can still feature plans by sort order. */
 export function isHighlightedPlan(slug: string): boolean {
-  return ["teacher_pro", "institute", "campus_pro"].includes(slug);
+  return ["teacher_pro", "institute", "campus_pro", "campus_elite"].includes(slug);
+}
+
+/**
+ * Plans that stay free after the launch offer and are deliberately limited.
+ * Everything else is "free for now" and becomes a paid plan later.
+ */
+export function isFreeTierPlan(slug: string): boolean {
+  return ["free", "institute_starter", "campus_starter"].includes(slug);
+}
+
+export function planOfferLabel(slug: string): string | null {
+  if (isFreeTierPlan(slug)) return "Free version · limited";
+  return "100% off · launch offer";
 }

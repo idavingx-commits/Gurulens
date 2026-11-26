@@ -50,7 +50,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const org = await getOrganizationBySlug(slug);
   if (!org) return { title: "Campus not found" };
 
-  const description = org.description ?? `${org.name} on GuruLens Campus`;
+  const description = org.description
+    ? `${org.description} · ${org.members?.length ?? 0} members · ${org._count?.channels ?? 0} channels`
+    : `${org.name} on GuruLens Campus · ${org.members?.length ?? 0} members · ${org._count?.channels ?? 0} channels`;
   const imageKey = org.coverKey ?? org.logoKey;
   const imageUrl = imageKey ? `/api/media/${imageKey}` : "/brand/og-default.png";
 
@@ -198,7 +200,7 @@ export default async function CampusDetailPage({ params }: Props) {
             <img
               src={coverUrl}
               alt=""
-              className="absolute inset-0 h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full scale-110 object-cover blur-[6px] saturate-[0.9]"
             />
           ) : (
             <>
@@ -212,7 +214,9 @@ export default async function CampusDetailPage({ params }: Props) {
               />
             </>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-ink-900/55 via-transparent to-transparent" />
+          {/* Soften the banner into the card body so it fades instead of ending as a hard block. */}
+          <div className="absolute inset-0 bg-gradient-to-b from-ink-900/35 via-ink-900/10 to-white/70" />
+          <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white via-white/70 to-transparent" />
 
           <span className="absolute top-3 left-3 inline-flex items-center gap-1 rounded-chip bg-white/15 px-2.5 py-1 text-[10px] font-black tracking-[0.12em] uppercase text-white backdrop-blur-sm">
             <Icon name={org.type === "school" ? "school" : "grid"} size={11} />

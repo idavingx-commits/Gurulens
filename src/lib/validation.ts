@@ -76,6 +76,10 @@ export const registerTeacherSchema = registerStudentSchema.extend({
   experienceYears: z.coerce.number().int().min(0).max(60).optional(),
   qualifications: z.string().trim().max(600).optional(),
   consentPublic: z.literal(true),
+  /** Launch plan chosen on the teacher signup screen (free plans auto-activate). */
+  planSlug: z.string().trim().min(1).max(80).optional(),
+  /** Optional mobile number, collected for teachers only. No OTP at signup. */
+  phone: z.string().trim().min(9).max(20).optional(),
 });
 
 export const loginSchema = z.object({
@@ -278,6 +282,84 @@ export const adminSettingsSchema = z.object({
 });
 
 export const verificationStatusSchema = z.enum(VERIFICATION_STATUSES);
+
+// ---------------------------------------------------------------------------
+// LMS workspaces
+// ---------------------------------------------------------------------------
+
+export const lmsWorkspaceSchema = z.object({
+  subdomain: z.string().trim().min(3).max(40),
+  name: nameSchema,
+  tagline: z.string().trim().max(120).optional(),
+  description: z.string().trim().max(1000).optional(),
+  brandColor: z
+    .string()
+    .trim()
+    .regex(/^#[0-9a-fA-F]{6}$/, "Use a hex colour such as #0094fd.")
+    .optional(),
+  organizationId: z.string().trim().min(1).optional(),
+  logoMediaId: z.string().trim().min(1).nullable().optional(),
+  coverMediaId: z.string().trim().min(1).nullable().optional(),
+});
+
+export const lmsWorkspaceUpdateSchema = lmsWorkspaceSchema.partial().extend({
+  id: z.string().trim().min(1),
+});
+
+export const lmsCourseSchema = z.object({
+  title: z.string().trim().min(3, "Give the course a title.").max(140),
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .max(80)
+    .regex(/^[a-z0-9][a-z0-9-]*$/, "Slug: lowercase letters, numbers and dashes.")
+    .optional(),
+  description: z.string().trim().max(2000).optional(),
+  level: z.enum(["all", "beginner", "intermediate", "advanced"]).default("all"),
+  visibility: z.enum(["public", "members"]).default("members"),
+  status: z.enum(["draft", "published", "archived"]).default("published"),
+  subjectId: z.string().trim().min(1).optional(),
+  gradeId: z.string().trim().min(1).optional(),
+  coverMediaId: z.string().trim().min(1).nullable().optional(),
+});
+
+export const lmsCourseUpdateSchema = lmsCourseSchema.partial();
+
+export const lmsLessonSchema = z.object({
+  id: z.string().trim().min(1).optional(),
+  title: z.string().trim().min(2, "Give the lesson a title.").max(160),
+  description: z.string().trim().max(600).optional(),
+  content: z.string().trim().max(30000).optional(),
+  videoUrl: z.string().trim().max(500).optional(),
+  durationMin: z.coerce.number().int().min(1).max(600).optional(),
+  isPreview: z.boolean().default(false),
+});
+
+export const lmsOutlineSchema = z.object({
+  modules: z
+    .array(
+      z.object({
+        id: z.string().trim().min(1).optional(),
+        title: z.string().trim().min(2, "Give the module a title.").max(160),
+        description: z.string().trim().max(600).optional(),
+        lessons: z.array(lmsLessonSchema).max(100).default([]),
+      }),
+    )
+    .max(40)
+    .default([]),
+});
+
+export const lmsAnnouncementSchema = z.object({
+  title: z.string().trim().min(2).max(140),
+  body: z.string().trim().min(2).max(4000),
+  pinned: z.boolean().default(false),
+});
+
+export const lmsEnrollActionSchema = z.object({
+  action: z.enum(["enroll", "approve", "remove", "complete"]),
+  enrollmentId: z.string().trim().min(1).optional(),
+});
 
 export const mfaEnableSchema = z.object({
   code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code."),

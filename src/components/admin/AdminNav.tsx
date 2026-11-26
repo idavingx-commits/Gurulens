@@ -11,6 +11,7 @@ const ITEMS = [
   { href: "/admin/verification", label: "Teachers", icon: "shield" },
   { href: "/admin/organizations", label: "Organizations", icon: "book-open" },
   { href: "/admin/channels", label: "Channels", icon: "radio" },
+  { href: "/admin/deletions", label: "Deletions", icon: "trash" },
   { href: "/admin/reports", label: "Reports", icon: "flag" },
   { href: "/admin/users", label: "Users", icon: "users" },
   { href: "/admin/badges", label: "Badges", icon: "award" },
@@ -21,12 +22,14 @@ export function AdminNav({
   openReports,
   pendingOrganizations = 0,
   pendingChannels = 0,
+  pendingDeletions = 0,
   isSuperAdmin = false,
 }: {
   pendingVerifications: number;
   openReports: number;
   pendingOrganizations?: number;
   pendingChannels?: number;
+  pendingDeletions?: number;
   isSuperAdmin?: boolean;
 }) {
   const pathname = usePathname();
@@ -40,6 +43,7 @@ export function AdminNav({
     "/admin/reports": openReports,
     "/admin/organizations": pendingOrganizations,
     "/admin/channels": pendingChannels,
+    "/admin/deletions": pendingDeletions,
   };
 
   return (

@@ -57,6 +57,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
+    site: "@GuruLens",
     title: `${APP_NAME} — ${APP_TAGLINE}`,
     images: ["/brand/og-default.png"],
   },

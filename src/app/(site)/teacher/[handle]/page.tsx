@@ -15,49 +15,42 @@ import { Badge, EmptyState, InfoNote, Stat, VerifiedTick } from "@/components/ui
 import { ShareButton } from "@/components/ui/share-button";
 import { getCurrentUser } from "@/lib/auth";
 import { getTeacherPageData } from "@/lib/data";
-import { db } from "@/lib/db";
-import { compactNumber, formatDate, timeAgo } from "@/lib/format";
 import { ratingBuckets } from "@/lib/ranking";
+import { compactNumber, formatDate, timeAgo } from "@/lib/format";
+import { SITE_URL, jsonLd } from "@/lib/site";
 
 type Params = Promise<{ handle: string }>;
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { handle } = await params;
-  const profile = await db.teacherProfile.findUnique({
-    where: { handle },
-    select: {
-      tagline: true,
-      bio: true,
-      verifiedStatus: true,
-      coverKey: true,
-      user: { select: { name: true, avatarKey: true } },
-    },
-  });
-  if (!profile) return { title: "Teacher not found" };
+  const data = await getTeacherPageData(handle, null);
+  if (!data) return { title: "Teacher not found" };
+  const { profile, followerCount, postViews } = data;
   const name = profile.user.name;
   const description =
     profile.tagline ??
     profile.bio?.slice(0, 150) ??
     `View ${name}'s classes, reviews, videos and quizzes on GuruLens.`;
+  const richDescription = `${description} · ${followerCount} followers · ${postViews.length} posts`;
   const imageKey = profile.coverKey ?? profile.user.avatarKey;
   const imageUrl = imageKey ? `/api/media/${imageKey}` : "/brand/og-default.png";
 
   return {
     title: `${name} — Teacher profile`,
     alternates: { canonical: `/teacher/${handle}` },
-    description,
+    description: richDescription,
     openGraph: {
       type: "profile",
       title: `${name} · GuruLens`,
-      description,
+      description: richDescription,
       url: `/teacher/${handle}`,
       images: [{ url: imageUrl, alt: `${name} on GuruLens` }],
     },
     twitter: {
       card: "summary_large_image",
       title: `${name} · GuruLens`,
-      description,
+      description: richDescription,
       images: [imageUrl],
     },
   };
@@ -116,6 +109,17 @@ export default async function TeacherProfilePage({
   const reviewCount = reviewAgg._count._all;
   const buckets = ratingBuckets(stars);
 
+  const teacherJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    name: profile.user.name,
+    url: `${SITE_URL}/teacher/${handle}`,
+    image: coverSrc ? `${SITE_URL}${coverSrc}` : avatarSrc ? `${SITE_URL}${avatarSrc}` : undefined,
+    description: profile.bio ?? profile.tagline ?? undefined,
+    jobTitle: "Teacher",
+    knowsAbout: profile.subjects.map((s) => s.subject.name),
+  };
+
   const feedPosts = postViews.filter((p) => !["reel", "video"].includes(p.type));
   const reels = postViews.filter((p) => p.type === "reel");
   const videos = postViews.filter((p) => p.type === "video");
@@ -138,6 +142,7 @@ export default async function TeacherProfilePage({
 
   return (
     <div className="relative isolate mx-auto w-full max-w-5xl px-4 pt-6 sm:px-6">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLd(teacherJsonLd) }} />
       {/* Background blobs */}
       <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 -z-10">
         <div className="animate-float-slow absolute -top-40 right-[10%] size-[30rem] rounded-full bg-brand-400/12 blur-3xl" />

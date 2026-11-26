@@ -8,6 +8,8 @@ import { Icon } from "@/components/ui/icons";
 import { EmptyState, SectionHeader, Stat, VerifiedTick } from "@/components/ui/primitives";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { getLmsWorkspacesForUser } from "@/lib/lms";
+import { getUserSubscription } from "@/lib/subscriptions";
 import { compactNumber, formatDate, timeAgo } from "@/lib/format";
 
 export const metadata: Metadata = { title: "My Dashboard" };
@@ -214,6 +216,24 @@ async function StudentDashboard({ userId }: { userId: string }) {
           />
         )}
       </section>
+
+      <div className="glass flex flex-col gap-3 rounded-card p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <span className="flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-accent-600 text-white">
+            <Icon name="book-open" size={20} />
+          </span>
+          <div>
+            <p className="text-[14.5px] font-extrabold text-ink-900">My courses</p>
+            <p className="text-[12.5px] text-ink-500">
+              Continue learning on your enrolled LMS courses.
+            </p>
+          </div>
+        </div>
+        <LinkButton href="/lms" size="sm">
+          Browse hubs
+          <Icon name="arrow-right" size={14} strokeWidth={2.4} />
+        </LinkButton>
+      </div>
     </div>
   );
 }
@@ -237,6 +257,15 @@ async function TeacherDashboard({ userId }: { userId: string }) {
     db.quiz.count({ where: { teacherId: userId } }),
     db.quizAttempt.count({ where: { quiz: { teacherId: userId } } }),
   ]);
+
+  const [subscription, workspaces] = await Promise.all([
+    getUserSubscription(userId),
+    getLmsWorkspacesForUser(userId),
+  ]);
+
+  const planName = subscription?.plan?.name ?? "Free";
+  const features = (subscription?.features ?? []) as string[];
+  const limits = (subscription?.limits ?? {}) as unknown as Record<string, number>;
 
   return (
     <div className="space-y-8">
@@ -268,6 +297,56 @@ async function TeacherDashboard({ userId }: { userId: string }) {
           Open Studio
           <Icon name="arrow-right" size={14} strokeWidth={2.4} />
         </LinkButton>
+      </div>
+
+      <div className="glass flex flex-col gap-3 rounded-card p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <span className="flex size-11 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-accent-600 text-white">
+            <Icon name="globe" size={20} />
+          </span>
+          <div>
+            <p className="text-[14.5px] font-extrabold text-ink-900">Learning Hub (LMS)</p>
+            <p className="text-[12.5px] text-ink-500">
+              {workspaces.length > 0
+                ? `${workspaces.length} hub${workspaces.length === 1 ? "" : "s"} live · ${limits.lms_courses ?? 0} course slots`
+                : "Claim a branded subdomain and run courses, lessons and learners."}
+            </p>
+          </div>
+        </div>
+        <LinkButton href={workspaces[0] ? `/lms/${workspaces[0].subdomain}/manage` : "/lms"} size="sm">
+          {workspaces.length > 0 ? "Manage hub" : "Claim a hub"}
+          <Icon name="arrow-right" size={14} strokeWidth={2.4} />
+        </LinkButton>
+      </div>
+
+      <div className="card space-y-3 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-[14.5px] font-extrabold text-ink-900">Your plan</p>
+            <p className="text-[12.5px] text-ink-500">
+              {planName} · {subscription?.status ?? "free"}
+            </p>
+          </div>
+          <LinkButton href="/pricing" size="sm" variant="outline">
+            Change plan <Icon name="arrow-right" size={14} strokeWidth={2.4} />
+          </LinkButton>
+        </div>
+        {features.length > 0 ? (
+          <ul className="grid gap-1.5 sm:grid-cols-2">
+            {features.slice(0, 8).map((f) => (
+              <li key={f} className="flex items-center gap-2 text-[12px] text-ink-600">
+                <Icon name="check" size={12} className="flex-none text-success-600" strokeWidth={3} />
+                {f.replace(/_/g, " ")}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-[12px] text-ink-500">Free plan — upgrade any time.</p>
+        )}
+        <p className="text-[11px] text-ink-400">
+          Channels: {limits.channels ?? "—"} · Classes: {limits.classes ?? "—"} · Storage:{" "}
+          {limits.storage_mb ?? "—"} MB · LMS courses: {limits.lms_courses ?? "—"}
+        </p>
       </div>
 
       {profile ? (

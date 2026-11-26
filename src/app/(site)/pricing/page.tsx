@@ -17,6 +17,13 @@ export const metadata: Metadata = {
     description:
       "Find the right plan for your classroom, institute or school. Free during launch.",
     url: "/pricing",
+    images: [{ url: "/brand/og-default.png", width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "GuruLens Plans & Pricing",
+    description: "Find the right plan for your classroom, institute or school. Free during launch.",
+    images: ["/brand/og-default.png"],
   },
 };
 

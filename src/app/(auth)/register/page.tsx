@@ -9,147 +9,177 @@ const OPTIONS = [
   {
     href: "/register/student",
     icon: "compass",
-    emoji: "📚",
-    title: "I'm a Student / Parent",
+    eyebrow: "For learners & parents",
+    title: "Student / Parent",
     si: "මම සිසුවෙක් / දෙමාපියෙක්",
     points: [
-      "Discover teachers by subject, grade and district",
-      "Follow teachers and watch lessons & reels",
-      "Rate teachers you have actually learned from",
-      "Attempt quizzes and save content",
+      "Find teachers by subject, grade & district",
+      "Watch lessons, reels and attempt quizzes",
+      "Review teachers you actually learned from",
     ],
     cta: "Create student account",
-    theme: "brand" as const,
+    theme: "light" as const,
+    badge: "Free forever",
   },
   {
     href: "/register/teacher",
     icon: "video",
-    emoji: "🎓",
-    title: "I'm a Teacher",
+    eyebrow: "For educators & institutes",
+    title: "Teacher",
     si: "මම ගුරුවරයෙක්",
     points: [
-      "Build a professional YouTube-style profile",
-      "Publish posts, lessons, reels and quizzes",
-      "Request the Verified Teacher badge",
-      "See insights on views, reach and reviews",
+      "Professional profile with verified badge",
+      "Classes, channels, posts, reels & quizzes",
+      "Your own LMS on a branded subdomain",
     ],
     cta: "Create teacher account",
-    theme: "ink" as const,
+    theme: "dark" as const,
+    badge: "All plans free",
   },
 ];
 
 export default function RegisterChooserPage() {
   return (
-    <div className="animate-fade-up">
-      {/* Header card */}
-      <div className="relative overflow-hidden rounded-3xl bg-white p-8 text-center shadow-xl ring-1 ring-ink-100">
-        {/* Decorative gradient */}
+    <div className="animate-fade-up space-y-5">
+      <div className="relative overflow-hidden rounded-[1.9rem] border border-white bg-white/95 p-7 text-center shadow-[0_24px_70px_-32px_rgba(10,27,61,0.3)] ring-1 ring-ink-100/80 sm:p-8">
         <div
           aria-hidden="true"
           className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-brand-500 via-accent-500 to-brand-500"
         />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-16 left-1/2 size-48 -translate-x-1/2 rounded-full bg-brand-100/70 blur-3xl"
+        />
 
         <div className="relative">
-          <div className="mx-auto mb-4 flex size-16 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-accent-500 text-3xl shadow-lg shadow-brand-500/25">
-            <span>👋</span>
+          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-accent-600 text-2xl shadow-lg shadow-brand-500/25 ring-4 ring-white">
+            <span aria-hidden="true">👋</span>
           </div>
-          <h1 className="text-3xl font-black tracking-tight text-ink-900">
-            Join <span className="text-shimmer bg-gradient-to-r from-brand-600 via-accent-500 to-brand-500 bg-clip-text text-transparent">GuruLens</span>
+          <h1 className="mt-4 text-[28px] leading-tight font-black tracking-tight text-ink-900">
+            Join{" "}
+            <span className="bg-gradient-to-r from-brand-600 via-accent-500 to-brand-500 bg-clip-text text-transparent">
+              GuruLens
+            </span>
           </h1>
           <p
             lang="si"
-            className="font-si mx-auto mt-3 max-w-md text-[14px] leading-[1.9] font-semibold text-ink-600"
+            className="font-si mx-auto mt-2 max-w-sm text-[13px] leading-[1.8] font-semibold text-ink-500"
           >
             ගුරුවරුන්ට සහ සිසුන්ට වෙන වෙනම account — ඔබට ගැලපෙන එක තෝරන්න.
           </p>
+          <span className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-success-100 px-3 py-1 text-[10.5px] font-black tracking-[0.08em] text-success-600 uppercase">
+            <Icon name="sparkles" size={11} strokeWidth={2.6} />
+            100% free during launch · no card needed
+          </span>
         </div>
       </div>
 
-      {/* Option cards */}
-      <div className="mt-6 grid gap-5">
-        {OPTIONS.map((opt, idx) => {
-          const student = opt.theme === "brand";
+      <div className="grid gap-4">
+        {OPTIONS.map((opt) => {
+          const dark = opt.theme === "dark";
           return (
             <Link
               key={opt.href}
               href={opt.href}
-              className={`group relative overflow-hidden rounded-[1.75rem] p-7 text-white shadow-2xl transition-all duration-300 hover:-translate-y-1 hover:scale-[1.01] ${
-                student
-                  ? "bg-gradient-to-br from-brand-500 via-brand-600 to-accent-600"
-                  : "bg-gradient-to-br from-ink-900 via-ink-800 to-ink-900"
+              className={`group relative overflow-hidden rounded-[1.6rem] p-5 shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl sm:p-6 ${
+                dark
+                  ? "bg-gradient-to-br from-ink-900 via-ink-800 to-brand-900 text-white ring-1 ring-ink-800"
+                  : "border border-white bg-white/95 text-ink-900 ring-1 ring-ink-100"
               }`}
-              style={{ animationDelay: `${idx * 100}ms` }}
             >
-              {/* Background decorations */}
               <div
                 aria-hidden="true"
-                className={`pointer-events-none absolute -top-24 -right-20 size-64 rounded-full blur-3xl transition-transform duration-500 group-hover:scale-110 ${
-                  student ? "bg-white/15" : "bg-brand-500/30"
-                }`}
-              />
-              <div
-                aria-hidden="true"
-                className={`pointer-events-none absolute -bottom-32 -left-20 size-72 rounded-full blur-3xl ${
-                  student ? "bg-white/10" : "bg-accent-500/20"
+                className={`pointer-events-none absolute -top-20 -right-16 size-48 rounded-full blur-3xl transition-transform duration-500 group-hover:scale-110 ${
+                  dark ? "bg-brand-500/30" : "bg-brand-100/80"
                 }`}
               />
 
-              {/* Header */}
-              <div className="relative flex items-center gap-4">
+              <div className="relative flex items-start gap-4">
                 <span
-                  className={`flex size-14 flex-none items-center justify-center rounded-2xl text-2xl shadow-lg ${
-                    student ? "bg-white/20" : "bg-white/10"
+                  className={`flex size-12 flex-none items-center justify-center rounded-2xl shadow-lg ${
+                    dark
+                      ? "bg-white/10 text-brand-200 ring-1 ring-white/15"
+                      : "bg-gradient-to-br from-brand-500 to-accent-500 text-white shadow-brand-500/25"
                   }`}
                 >
-                  {opt.emoji}
+                  <Icon name={opt.icon} size={22} />
                 </span>
-                <div>
-                  <h2 className="text-xl font-black tracking-tight">{opt.title}</h2>
-                  <p lang="si" className="font-si text-[13px] font-bold text-white/75">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span
+                      className={`text-[10px] font-black tracking-[0.12em] uppercase ${
+                        dark ? "text-brand-300" : "text-brand-600"
+                      }`}
+                    >
+                      {opt.eyebrow}
+                    </span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[9.5px] font-black uppercase ${
+                        dark ? "bg-success-500/20 text-success-100" : "bg-success-100 text-success-600"
+                      }`}
+                    >
+                      {opt.badge}
+                    </span>
+                  </div>
+                  <h2 className="mt-1 text-[19px] leading-tight font-black tracking-tight">
+                    {opt.title}
+                  </h2>
+                  <p
+                    lang="si"
+                    className={`font-si text-[11.5px] font-bold ${
+                      dark ? "text-white/55" : "text-ink-400"
+                    }`}
+                  >
                     {opt.si}
                   </p>
                 </div>
               </div>
 
-              {/* Feature list */}
-              <ul className="relative mt-5 space-y-2.5">
+              <ul className="relative mt-4 grid gap-1.5">
                 {opt.points.map((p) => (
                   <li
                     key={p}
-                    className="flex items-start gap-3 text-[13px] font-medium text-white/90"
+                    className={`flex items-start gap-2 text-[12.5px] leading-snug ${
+                      dark ? "text-white/75" : "text-ink-600"
+                    }`}
                   >
                     <span
-                      className={`mt-0.5 flex size-5 flex-none items-center justify-center rounded-full ${
-                        student ? "bg-white/25" : "bg-brand-500/50"
+                      className={`mt-0.5 flex size-4 flex-none items-center justify-center rounded-full ${
+                        dark ? "bg-brand-500/30 text-brand-200" : "bg-success-100 text-success-600"
                       }`}
                     >
-                      <Icon name="check" size={12} strokeWidth={3} />
+                      <Icon name="check" size={10} strokeWidth={3.2} />
                     </span>
                     {p}
                   </li>
                 ))}
               </ul>
 
-              {/* CTA button */}
-              <div className="relative mt-6">
-                <span
-                  className={`inline-flex items-center gap-2 rounded-full px-6 py-3 text-[14px] font-bold shadow-xl transition-all group-hover:-translate-y-0.5 group-hover:shadow-2xl ${
-                    student
-                      ? "bg-white text-brand-700"
-                      : "bg-white text-ink-900"
-                  }`}
-                >
-                  {opt.cta}
-                  <Icon name="arrow-right" size={16} strokeWidth={2.5} />
-                </span>
-              </div>
+              <span
+                className={`relative mt-4 inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-[12.5px] font-bold transition-all group-hover:gap-3 ${
+                  dark ? "bg-white text-ink-900" : "bg-ink-900 text-white"
+                }`}
+              >
+                {opt.cta}
+                <Icon name="arrow-right" size={14} strokeWidth={2.6} />
+              </span>
             </Link>
           );
         })}
       </div>
 
-      {/* Sign in link */}
-      <div className="mt-8 text-center">
+      <div className="flex items-start gap-3 rounded-2xl border border-ink-200/70 bg-white/70 p-4">
+        <span className="flex size-9 flex-none items-center justify-center rounded-xl bg-brand-50 text-brand-600">
+          <Icon name="school" size={17} />
+        </span>
+        <p className="text-[12px] leading-relaxed text-ink-500">
+          <span className="font-bold text-ink-700">Joining a school?</span> Pick your account type
+          above and add your school, admission number or staff ID during sign-up. Your school
+          approves it before class timetables unlock.
+        </p>
+      </div>
+
+      <div className="text-center">
         <p className="text-sm text-ink-500">
           Already have an account?{" "}
           <Link
@@ -157,13 +187,12 @@ export default function RegisterChooserPage() {
             className="inline-flex items-center gap-1 font-bold text-brand-600 transition-colors hover:text-brand-700"
           >
             Sign in
-            <Icon name="arrow-right" size={14} />
+            <Icon name="arrow-right" size={13} />
           </Link>
         </p>
       </div>
 
-      {/* Terms note */}
-      <p className="mt-4 text-center text-[11.5px] leading-relaxed text-ink-400">
+      <p className="text-center text-[11px] leading-relaxed text-ink-400">
         By creating an account you agree to our{" "}
         <Link href="/terms" className="font-semibold text-ink-600 underline">
           Terms

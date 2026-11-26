@@ -61,6 +61,8 @@ model User {
   verificationRequests VerificationRequest[] @relation("teacherRequests")
   reviewedRequests     VerificationRequest[] @relation("reviewerRequests")
   badgeGrants          BadgeGrant[]
+  deletionRequestsMade   DeletionRequest[] @relation("deletionRequester")
+  deletionRequestsReviewed DeletionRequest[] @relation("deletionReviewer")
 
   // New relations for ecosystem upgrade
   organizationMemberships OrganizationMember[]
@@ -76,6 +78,13 @@ model User {
   guardianRelations       GuardianStudent[]    @relation("guardianRelations")
   subscriptions           UserSubscription[]
   studentCard             StudentCard?
+
+  // LMS workspaces (subdomain learning hubs)
+  lmsWorkspaces           LmsWorkspace[]        @relation("lmsWorkspaces")
+  lmsCoursesCreated       LmsCourse[]           @relation("lmsCoursesCreated")
+  lmsEnrollments          LmsEnrollment[]       @relation("lmsEnrollments")
+  lmsLessonProgress       LmsLessonProgress[]   @relation("lmsLessonProgress")
+  lmsAnnouncements        LmsAnnouncement[]     @relation("lmsAnnouncements")
 
   @@index([role, status])
 }
@@ -525,6 +534,31 @@ model ModerationAction {
   @@index([createdAt])
 }
 
+// Admin approval workflow for destructive deletes: channels with many
+// followers and campuses can only be removed once a moderator approves.
+// status: pending | approved | rejected
+// targetType: channel | organization
+model DeletionRequest {
+  id            String    @id @default(cuid())
+  targetType    String
+  targetId      String
+  targetLabel   String    @default("") // snapshot: name (@slug) shown in admin
+  requestedById String
+  reason        String?
+  status        String    @default("pending")
+  reviewedById  String?
+  reviewNote    String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  decidedAt     DateTime?
+
+  requestedBy User  @relation("deletionRequester", fields: [requestedById], references: [id], onDelete: Cascade)
+  reviewedBy  User? @relation("deletionReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([status, targetType])
+  @@index([targetType, targetId])
+}
+
 model AuditLog {
   id        String   @id @default(cuid())
   actorId   String
@@ -631,6 +665,7 @@ model Organization {
   verificationRequests OrganizationVerificationRequest[]
   schoolClasses        SchoolClass[]
   timetableEntries     TimetableEntry[]
+  lmsWorkspace         LmsWorkspace?
 
   @@index([type, verifiedStatus])
   @@index([slug])
@@ -1206,4 +1241,142 @@ model StudentCard {
   createdAt  DateTime  @default(now())
 
   student User @relation(fields: [studentId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------------------------
+// LMS workspaces — white-labelled learning hubs on <subdomain>.gurulens.us
+// ---------------------------------------------------------------------------
+
+// One workspace per subdomain. A private teacher owns a personal workspace; an
+// institute/school can link its workspace to an Organization so managers share
+// the same learning hub.
+model LmsWorkspace {
+  id             String   @id @default(cuid())
+  subdomain      String   @unique
+  name           String
+  tagline        String?
+  description    String?
+  logoKey        String?
+  coverKey       String?
+  brandColor     String   @default("#0094fd")
+  ownerId        String
+  organizationId String?  @unique
+  isActive       Boolean  @default(true)
+  settings       String? // JSON: future LMS preferences
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  owner         User            @relation("lmsWorkspaces", fields: [ownerId], references: [id], onDelete: Cascade)
+  organization  Organization?   @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  courses       LmsCourse[]
+  announcements LmsAnnouncement[]
+
+  @@index([ownerId])
+  @@index([organizationId])
+}
+
+// status: draft | published | archived
+// visibility: public | members
+model LmsCourse {
+  id          String   @id @default(cuid())
+  workspaceId String
+  createdById String?
+  title       String
+  slug        String
+  description String?
+  coverKey    String?
+  level       String   @default("all") // all | beginner | intermediate | advanced
+  subjectId   String?
+  gradeId     String?
+  status      String   @default("published")
+  visibility  String   @default("members")
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace   LmsWorkspace      @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdBy   User?             @relation("lmsCoursesCreated", fields: [createdById], references: [id], onDelete: SetNull)
+  modules     LmsModule[]
+  enrollments LmsEnrollment[]
+
+  @@unique([workspaceId, slug])
+  @@index([workspaceId, status])
+}
+
+model LmsModule {
+  id          String   @id @default(cuid())
+  courseId    String
+  title       String
+  description String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  course  LmsCourse   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons LmsLesson[]
+
+  @@index([courseId])
+}
+
+model LmsLesson {
+  id          String   @id @default(cuid())
+  moduleId    String
+  title       String
+  description String?
+  content     String?
+  videoUrl    String?
+  durationMin Int?
+  isPreview   Boolean  @default(false)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  module   LmsModule           @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  progress LmsLessonProgress[]
+
+  @@index([moduleId])
+}
+
+// status: pending | active | completed | dropped
+model LmsEnrollment {
+  id          String    @id @default(cuid())
+  courseId    String
+  userId      String
+  status      String    @default("active")
+  enrolledAt  DateTime  @default(now())
+  completedAt DateTime?
+
+  course LmsCourse @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  user   User      @relation("lmsEnrollments", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([courseId, userId])
+  @@index([userId, status])
+}
+
+model LmsLessonProgress {
+  id          String   @id @default(cuid())
+  lessonId    String
+  userId      String
+  completedAt DateTime @default(now())
+
+  lesson LmsLesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  user   User      @relation("lmsLessonProgress", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([lessonId, userId])
+  @@index([userId])
+}
+
+model LmsAnnouncement {
+  id          String   @id @default(cuid())
+  workspaceId String
+  authorId    String?
+  title       String
+  body        String
+  pinned      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  workspace LmsWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  author    User?        @relation("lmsAnnouncements", fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([workspaceId, pinned, createdAt])
 }

@@ -17,6 +17,9 @@ export interface PlanLimits {
   branches?: number;
   students?: number;
   grades?: number;
+  lms_courses?: number;
+  lms_lessons?: number;
+  lms_students?: number;
 }
 
 export interface PlanFeatures {
@@ -50,6 +53,13 @@ export interface PlanFeatures {
   notice_approval?: boolean;
   audit_logs?: boolean;
   dedicated_support?: boolean;
+  lms_workspace?: boolean;
+  course_builder?: boolean;
+  lesson_player?: boolean;
+  student_progress?: boolean;
+  course_announcements?: boolean;
+  lms_analytics?: boolean;
+  lms_certificates?: boolean;
 }
 
 // Get all active plans

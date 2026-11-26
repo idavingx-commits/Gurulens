@@ -147,18 +147,25 @@ export function VerifyEmailForm({
   }
 
   return (
-    <div className="glass-strong animate-fade-up relative overflow-hidden rounded-3xl p-7 sm:p-9">
+    <div className="animate-fade-up relative overflow-hidden rounded-[1.9rem] border border-white bg-white/95 p-7 shadow-[0_30px_80px_-30px_rgba(10,27,61,0.3)] ring-1 ring-ink-100/80 backdrop-blur-xl sm:p-9">
       <div
         aria-hidden="true"
-        className="absolute inset-x-10 top-0 h-[3px] rounded-b-full bg-gradient-to-r from-brand-500 via-accent-500 to-brand-500"
+        className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-brand-500 via-accent-500 to-brand-500"
       />
-      <span className="flex size-11 items-center justify-center rounded-2xl bg-brand-50 text-brand-600">
-        <Icon name="shield-check" size={20} />
-      </span>
-      <h1 className="mt-3 text-xl font-extrabold tracking-tight text-ink-900">
-        Verify your account
-      </h1>
-      <p lang="si" className="font-si mt-1.5 text-[13px] font-semibold leading-[1.85] text-ink-500">
+      <div className="flex items-start gap-3.5">
+        <span className="flex size-12 flex-none items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-accent-600 text-white shadow-lg shadow-brand-500/25">
+          <Icon name="mail" size={22} />
+        </span>
+        <div>
+          <h1 className="text-[24px] leading-tight font-black tracking-tight text-ink-900">
+            Verify your email
+          </h1>
+          <p className="text-[12px] font-semibold text-ink-400">
+            One code — then your account is ready
+          </p>
+        </div>
+      </div>
+      <p lang="si" className="font-si mt-4 rounded-xl border border-brand-100 bg-brand-50/70 px-4 py-3 text-[13px] font-semibold leading-[1.8] text-ink-600">
         ඔබේ විද්‍යුත් තැපෑල තහවුරු කරන්න — කේතය ඔබේ inbox එකට එවනු ලැබේ.
       </p>
 
@@ -230,20 +237,28 @@ export function VerifyEmailForm({
         </form>
       )}
 
-      {/* Phone OTP */}
-      {signedIn ? (
-        <div className="mt-7 border-t border-ink-100 pt-5">
-          <h2 className="flex items-center gap-2 text-[13px] font-extrabold text-ink-900">
-            <Icon name="smartphone" size={15} className="text-brand-600" />
-            Phone verification (OTP)
-            {phoneDone ? (
-              <span className="rounded-chip bg-success-100 px-2 py-0.5 text-[10px] font-bold text-success-600">
-                Verified
-              </span>
-            ) : null}
-          </h2>
-          <p className="mt-1 text-[12px] leading-relaxed text-ink-500">
-            Add a Sri Lankan mobile number and verify it with a one-time SMS code.
+      {/* Optional phone verification — never part of the signup gate. */}
+      {signedIn && role === "teacher" && verified ? (
+        <details className="group mt-7 rounded-2xl border border-ink-100 bg-ink-50/40 p-4">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2">
+            <span className="flex items-center gap-2 text-[13px] font-extrabold text-ink-800">
+              <Icon name="smartphone" size={15} className="text-brand-600" />
+              Optional: verify your phone
+              {phoneDone ? (
+                <span className="rounded-chip bg-success-100 px-2 py-0.5 text-[10px] font-bold text-success-600">
+                  Verified
+                </span>
+              ) : null}
+            </span>
+            <Icon
+              name="chevron-down"
+              size={14}
+              className="flex-none text-ink-400 transition-transform group-open:rotate-180"
+            />
+          </summary>
+          <p className="mt-2 text-[12px] leading-relaxed text-ink-500">
+            Only needed if you want class updates by SMS. Your verified email is enough to use
+            GuruLens — you can also add this later in Settings.
           </p>
 
           {phoneDone ? (
@@ -314,7 +329,7 @@ export function VerifyEmailForm({
               {phoneError ? <InfoNote tone="danger" icon="alert">{phoneError}</InfoNote> : null}
             </div>
           )}
-        </div>
+        </details>
       ) : null}
 
       <p className="mt-6 text-center text-[12.5px] text-ink-400">

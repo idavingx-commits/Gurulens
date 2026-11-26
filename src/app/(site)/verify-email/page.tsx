@@ -11,7 +11,7 @@ type Props = {
 };
 
 export const metadata: Metadata = {
-  title: "Verify your account",
+  title: "Verify your email",
   robots: { index: false, follow: false },
 };
 

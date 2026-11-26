@@ -12,6 +12,7 @@ import { cn } from "@/lib/format";
 import {
   formatPlanLimit,
   isFreeForNow,
+  isFreeTierPlan,
   isHighlightedPlan,
   PLAN_AUDIENCE_MAP,
   PLAN_AUDIENCES,
@@ -19,6 +20,7 @@ import {
   PLAN_LIMITS,
   planAudience,
   planFeatureLabel,
+  planOfferLabel,
   planPriceLabel,
   type PlanAudience,
   type PlanLimitKey,
@@ -204,6 +206,21 @@ function PlanCard({
             No card required during launch
           </p>
         )}
+        <p
+          className={cn(
+            "mt-2 inline-flex w-fit items-center gap-1 rounded-full px-2 py-1 text-[9.5px] font-black tracking-wide uppercase",
+            isFreeTierPlan(plan.slug)
+              ? "bg-success-100 text-success-600"
+              : "bg-warn-100 text-warn-600",
+          )}
+        >
+          <Icon
+            name={isFreeTierPlan(plan.slug) ? "check-circle" : "clock"}
+            size={10}
+            strokeWidth={2.6}
+          />
+          {planOfferLabel(plan.slug)}
+        </p>
 
         <div className="mt-4 grid grid-cols-2 gap-1.5">
           {limitKeys.map((key) => {
@@ -370,37 +387,123 @@ export function PricingPlans({ plans, currentSlug, isAuthed, isAdmin }: Props) {
   return (
     <div className="pb-8">
       {/* Hero */}
-      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-ink-900 via-brand-800 to-accent-700 px-5 py-8 text-white shadow-xl sm:px-9 sm:py-11">
+      <section className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-ink-900 via-brand-800 to-accent-700 px-5 py-7 text-white shadow-xl sm:px-9 sm:py-10">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -top-24 -right-16 size-72 rounded-full bg-brand-400/25 blur-3xl"
+          className="pointer-events-none absolute -top-24 -right-16 size-80 rounded-full bg-brand-400/25 blur-3xl"
         />
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute -bottom-28 -left-20 size-72 rounded-full bg-accent-400/20 blur-3xl"
+          className="pointer-events-none absolute -bottom-32 -left-20 size-80 rounded-full bg-accent-400/20 blur-3xl"
         />
-        <div className="relative mx-auto max-w-3xl text-center">
-          <span className="inline-flex items-center gap-1.5 rounded-chip bg-white/15 px-3 py-1 text-[10px] font-black tracking-[0.16em] uppercase backdrop-blur-sm">
-            <Icon name="crown" size={11} /> GuruLens plans
-          </span>
-          <h1 className="mt-3 text-3xl font-extrabold tracking-tight sm:text-4xl">
-            A plan for every classroom.
-          </h1>
-          <p lang="si" className="font-si mx-auto mt-2 max-w-xl text-[13.5px] leading-[1.85] font-semibold text-white/80">
-            ඔබේ ඉගැන්වීමට ගැලපෙන සැලැස්මක් තෝරන්න — පන්ති, චැනල් සහ කණ්ඩායම් එකම තැනකින්.
-          </p>
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-chip bg-success-500/95 px-3 py-1.5 text-[11px] font-black text-white shadow-sm">
-              <Icon name="sparkles" size={12} /> Every plan is free during launch
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-[0.05]"
+          style={{
+            backgroundImage:
+              "linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px)",
+            backgroundSize: "48px 48px",
+          }}
+        />
+
+        <div className="relative grid gap-6 lg:grid-cols-[1.3fr_1fr] lg:items-center">
+          <div>
+            <span className="inline-flex items-center gap-1.5 rounded-chip bg-white/15 px-3 py-1 text-[10px] font-black tracking-[0.16em] uppercase backdrop-blur-sm">
+              <Icon name="crown" size={11} /> GuruLens plans
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-chip bg-white/12 px-3 py-1.5 text-[11px] font-bold text-white/90 backdrop-blur-sm">
-              <Icon name="credit-card" size={12} /> No card required
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-chip bg-white/12 px-3 py-1.5 text-[11px] font-bold text-white/90 backdrop-blur-sm">
-              <Icon name="refresh" size={12} /> Switch any time
-            </span>
+            <h1 className="mt-3 text-3xl leading-[1.08] font-extrabold tracking-tight sm:text-[40px]">
+              Every plan is{" "}
+              <span className="bg-gradient-to-r from-brand-200 via-white to-success-100 bg-clip-text text-transparent">
+                100% free
+              </span>{" "}
+              during launch.
+            </h1>
+            <p
+              lang="si"
+              className="font-si mt-3 max-w-xl text-[13.5px] leading-[1.85] font-semibold text-white/75"
+            >
+              ගුරුවරුන්, ටියුෂන් ආයතන සහ පාසල් සඳහා සැලසුම් — දැන් සියල්ලම නොමිලේ. ගෙවීම් පද්ධතිය
+              එන අලුත් update එකේදී පමණක් ක්‍රියාත්මක වේ.
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-chip bg-success-500 px-3 py-1.5 text-[11px] font-black text-white shadow-sm">
+                <Icon name="sparkles" size={12} /> No card required
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-chip bg-white/12 px-3 py-1.5 text-[11px] font-bold text-white/90 backdrop-blur-sm">
+                <Icon name="refresh" size={12} /> Switch any time
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-chip bg-white/12 px-3 py-1.5 text-[11px] font-bold text-white/90 backdrop-blur-sm">
+                <Icon name="shield-check" size={12} /> Keep your content
+              </span>
+            </div>
+          </div>
+
+          <div className="relative overflow-hidden rounded-2xl border border-white/20 bg-white/10 p-5 shadow-xl backdrop-blur-md">
+            <div className="flex items-end gap-2">
+              <span className="text-[58px] leading-none font-black tracking-[-0.05em] sm:text-[66px]">
+                100%
+              </span>
+              <span className="pb-2 text-[18px] font-black tracking-[0.18em] text-success-100">
+                OFF
+              </span>
+            </div>
+            <p className="mt-1 text-[13px] font-bold text-white/90">
+              Teachers · Institutes · Schools
+            </p>
+            <div className="mt-3 space-y-2 text-[11.5px] font-semibold text-white/75">
+              <p className="flex items-start gap-2">
+                <Icon name="check-circle" size={13} className="mt-0.5 flex-none text-success-100" />
+                Subscriptions are free right now — every feature included.
+              </p>
+              <p className="flex items-start gap-2">
+                <Icon name="clock" size={13} className="mt-0.5 flex-none text-warn-100" />
+                Payment will be required in a future update, never today.
+              </p>
+              <p className="flex items-start gap-2">
+                <Icon name="info" size={13} className="mt-0.5 flex-none text-brand-200" />
+                We&apos;ll announce billing well before it begins.
+              </p>
+            </div>
+            <p className="mt-3 rounded-xl bg-ink-900/35 px-3 py-2 text-[10.5px] leading-relaxed font-semibold text-white/65">
+              Teachers, tuition institutes and campuses each get a limited free version that stays
+              free after launch.
+            </p>
           </div>
         </div>
+      </section>
+
+      {/* Launch pricing explainer */}
+      <section className="mt-4 grid gap-3 sm:grid-cols-3">
+        {[
+          {
+            icon: "zap",
+            title: "Free for now",
+            text: "Start any plan with zero payment. Your limits and features activate immediately.",
+            tone: "text-success-600 bg-success-100",
+          },
+          {
+            icon: "credit-card",
+            title: "Paid in a future update",
+            text: "Payments are not live yet. When they are, existing accounts get advance notice.",
+            tone: "text-warn-600 bg-warn-100",
+          },
+          {
+            icon: "shield-check",
+            title: "Limited free versions",
+            text: "Teacher, institute and campus free tiers stay free — with sensible limits.",
+            tone: "text-brand-600 bg-brand-50",
+          },
+        ].map((item) => (
+          <div key={item.title} className="card flex items-start gap-3 p-4">
+            <span className={`flex size-9 flex-none items-center justify-center rounded-xl ${item.tone}`}>
+              <Icon name={item.icon} size={16} />
+            </span>
+            <div>
+              <p className="text-[12.5px] font-extrabold text-ink-900">{item.title}</p>
+              <p className="mt-0.5 text-[11.5px] leading-relaxed text-ink-500">{item.text}</p>
+            </div>
+          </div>
+        ))}
       </section>
 
       {isAdmin ? (
@@ -588,8 +691,16 @@ export function PricingPlans({ plans, currentSlug, isAuthed, isAdmin }: Props) {
         <div className="mt-3 space-y-2">
           {[
             {
-              q: "Are the prices final?",
-              a: "Not yet. We are still finalising Sri Lankan payments. Every plan is free to start during this launch period, and we will give existing users plenty of notice before billing begins.",
+              q: "Are the prices final—and when do I pay?",
+              a: "Not yet. Subscriptions are 100% free during our launch while we finalise Sri Lankan payments. Payment will be required in a future update. We will announce the date, pricing and grace period well in advance — nothing is charged today and no card is stored.",
+            },
+            {
+              q: "Is there a free version that stays free?",
+              a: "Yes. The GuruLens Free teacher plan, Institute Starter and Campus Starter are limited free versions. They remain free after the launch offer, with sensible limits on channels, classes and LMS courses.",
+            },
+            {
+              q: "What do teachers, institutes and schools get?",
+              a: "Teachers get a professional profile, classes, channels and a personal LMS subdomain. Institutes add multi-teacher dashboards, fees and branches. Schools add grades, timetables, staff/student IDs and a branded campus LMS.",
             },
             {
               q: "Can I change plans later?",

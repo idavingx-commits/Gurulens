@@ -7,8 +7,9 @@ import { db } from "@/lib/db";
 import { isMailConfigured, sendEmail, verificationEmailHtml } from "@/lib/mail";
 import { clientIp, rateLimit } from "@/lib/rate-limit";
 import { commitSchoolMembership, prepareSchoolRegistration } from "@/lib/school";
+import { createSubscription } from "@/lib/subscriptions";
 import { isAgeEligible, registerStudentSchema, registerTeacherSchema } from "@/lib/validation";
-import { issueCode } from "@/lib/verification";
+import { issueCode, normalizeLkPhone } from "@/lib/verification";
 import { z } from "zod";
 
 const bodySchema = z.discriminatedUnion("role", [
@@ -36,6 +37,24 @@ export const POST = route(async (req: NextRequest) => {
   const existing = await db.user.findUnique({ where: { email: body.email } });
   if (existing) {
     throw new ApiError(409, "An account with this email already exists.", "email_taken");
+  }
+
+  // Teachers may add a mobile number at signup. It is stored unverified — no
+  // OTP is requested during registration; email is the only signup gate.
+  let phone: string | null = null;
+  if (body.role === "teacher" && body.phone) {
+    phone = normalizeLkPhone(body.phone);
+    if (!phone) {
+      throw new ApiError(
+        400,
+        "Enter a valid Sri Lankan mobile number (e.g. 077 123 4567).",
+        "bad_phone",
+      );
+    }
+    const phoneTaken = await db.user.findUnique({ where: { phone }, select: { id: true } });
+    if (phoneTaken) {
+      throw new ApiError(409, "This phone number is already linked to another account.", "phone_taken");
+    }
   }
 
   // Validate the optional school registration BEFORE creating the account so
@@ -108,6 +127,7 @@ export const POST = route(async (req: NextRequest) => {
           role: "teacher",
           name: body.name,
           dateOfBirth: body.dateOfBirth,
+          phone,
           ageEligible: true,
         },
       });
@@ -155,6 +175,22 @@ export const POST = route(async (req: NextRequest) => {
     await commitSchoolMembership(userId, body.name, schoolPrep);
   }
 
+  // Auto-activate the free launch plan the teacher chose on the signup screen.
+  // A failure here never blocks account creation.
+  let activatedPlan: string | null = null;
+  if (body.role === "teacher" && body.planSlug) {
+    const plan = await db.plan.findUnique({ where: { slug: body.planSlug } });
+    const teacherPlan =
+      plan &&
+      plan.isActive &&
+      plan.priceLkr === 0 &&
+      ["free", "teacher", "teacher_pro"].includes(plan.type);
+    if (teacherPlan && plan) {
+      await createSubscription({ userId, planSlug: plan.slug, status: "active" }).catch(() => null);
+      activatedPlan = plan.slug;
+    }
+  }
+
   const session = await createSession(userId, {
     userAgent: req.headers.get("user-agent"),
     ip,
@@ -172,6 +208,7 @@ export const POST = route(async (req: NextRequest) => {
   return ok({
     userId,
     role: body.role,
+    planSlug: activatedPlan,
     schoolPending: Boolean(schoolPrep),
     emailVerified: false,
     devCode:

@@ -10,6 +10,7 @@ import { ApiError, ok, parseBody, requireAuth, route } from "@/lib/api";
 import { writeAudit } from "@/lib/audit";
 import { db } from "@/lib/db";
 import { getOrgAccess } from "@/lib/organizations";
+import { requestDeletion, getPendingDeletionRequest } from "@/lib/deletion";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -111,4 +112,60 @@ export const PATCH = route(async (req: NextRequest, ctx: Ctx) => {
   });
 
   return ok({ organization: updated });
+});
+
+// === Campus deletion (admin approval workflow) ===
+
+export const DELETE = route(async (req: NextRequest, ctx: Ctx) => {
+  const auth = await requireAuth(req);
+  const { id } = await ctx.params;
+
+  const org = await db.organization.findUnique({
+    where: { id },
+    select: { id: true, name: true, slug: true, _count: { select: { members: true } } },
+  });
+  if (!org) throw new ApiError(404, "Organization not found.", "not_found");
+
+  const access = await getOrgAccess(auth.user.id, auth.user.role, id);
+  if (!access.canAdminister) {
+    throw new ApiError(403, "You do not have permission to delete this campus.", "forbidden");
+  }
+
+  const isAdmin = auth.user.role === "admin" || auth.user.role === "moderator";
+
+  if (isAdmin) {
+    const { executeOrganizationDeletion } = await import("@/lib/deletion");
+    await executeOrganizationDeletion(id);
+    await writeAudit(auth.user.id, "organization.delete", id, { name: org.name });
+    return ok({ deleted: true });
+  }
+
+  const existing = await getPendingDeletionRequest("organization", id);
+  if (existing) {
+    return ok(
+      {
+        approvalRequired: true,
+        requestId: existing.id,
+        message: "A deletion request is already pending admin review.",
+      },
+      { status: 202 },
+    );
+  }
+
+  const created = await requestDeletion({
+    targetType: "organization",
+    targetId: id,
+    targetLabel: `${org.name} (@${org.slug})`,
+    requestedById: auth.user.id,
+    reason: null,
+  });
+
+  return ok(
+    {
+      approvalRequired: true,
+      requestId: created.id,
+      message: "Deletion requested. A moderator will review it before the campus is removed.",
+    },
+    { status: 202 },
+  );
 });

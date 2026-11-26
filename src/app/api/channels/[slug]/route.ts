@@ -5,11 +5,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import {
-  getChannelBySlug,
-  updateChannel,
   deleteChannel,
+  getChannelBySlug,
   isFollowingChannel,
+  updateChannel,
 } from "@/lib/channels";
+import {
+  channelRequiresDeletionApproval,
+  getPendingDeletionRequest,
+  requestDeletion,
+} from "@/lib/deletion";
 import { db } from "@/lib/db";
 import { checkPermission } from "@/lib/roles";
 import { z } from "zod";
@@ -168,8 +173,46 @@ export async function DELETE(
       return NextResponse.json({ error: "Permission denied" }, { status: 403 });
     }
 
-    await deleteChannel(channel.id);
+    // System admins can delete immediately (they are the approval authority).
+    const isAdmin = session.user.role === "admin" || session.user.role === "moderator";
 
+    if (isAdmin) {
+      await deleteChannel(channel.id);
+      return NextResponse.json({ success: true });
+    }
+
+    if (channelRequiresDeletionApproval(channel)) {
+      const existing = await getPendingDeletionRequest("channel", channel.id);
+      if (existing) {
+        return NextResponse.json(
+          {
+            approvalRequired: true,
+            requestId: existing.id,
+            message:
+              "This channel needs admin approval before deletion. Your request is already pending.",
+          },
+          { status: 202 },
+        );
+      }
+      const created = await requestDeletion({
+        targetType: "channel",
+        targetId: channel.id,
+        targetLabel: `${channel.name} (@${channel.slug})`,
+        requestedById: session.user.id,
+        reason: null,
+      });
+      return NextResponse.json(
+        {
+          approvalRequired: true,
+          requestId: created.id,
+          message:
+            "Deletion requested. A moderator will review it before the channel is removed.",
+        },
+        { status: 202 },
+      );
+    }
+
+    await deleteChannel(channel.id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error in DELETE /api/channels/[slug]:", error);

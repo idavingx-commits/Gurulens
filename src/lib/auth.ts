@@ -80,11 +80,13 @@ export async function setSessionCookie(
   csrfToken: string,
 ): Promise<void> {
   const store = await cookies();
+  const domain = process.env.COOKIE_DOMAIN || undefined;
   store.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
+    ...(domain ? { domain } : {}),
     expires: expiresAt,
   });
   // Readable double-submit token for the browser to echo in the CSRF header.
@@ -93,17 +95,20 @@ export async function setSessionCookie(
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
+    ...(domain ? { domain } : {}),
     expires: expiresAt,
   });
 }
 
 export async function clearSessionCookie(): Promise<void> {
   const store = await cookies();
+  const domain = process.env.COOKIE_DOMAIN || undefined;
   store.set(SESSION_COOKIE, "", {
     httpOnly: true,
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
+    ...(domain ? { domain } : {}),
     maxAge: 0,
   });
   store.set("gl_csrf", "", {
@@ -111,6 +116,7 @@ export async function clearSessionCookie(): Promise<void> {
     sameSite: "lax",
     secure: process.env.NODE_ENV === "production",
     path: "/",
+    ...(domain ? { domain } : {}),
     maxAge: 0,
   });
 }

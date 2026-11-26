@@ -58,7 +58,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const channel = await getChannelBySlug(slug);
   if (!channel) return { title: "Channel Not Found" };
 
-  const description = channel.description || `Follow ${channel.name} on GuruLens`;
+  const description = channel.description
+    ? `${channel.description} · ${channel.followerCount} followers · ${channel.postCount} posts`
+    : `Follow ${channel.name} on GuruLens · ${channel.followerCount} followers · ${channel.postCount} posts`;
   const imageKey = channel.coverKey ?? channel.avatarKey;
   const imageUrl = imageKey ? `/api/media/${imageKey}` : "/brand/og-default.png";
 

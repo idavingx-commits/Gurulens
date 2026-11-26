@@ -18,7 +18,7 @@
 
 - **Next.js 16.4.6 (App Router)** — BREAKING CHANGES vs training data. Read `node_modules/next/dist/docs/` before writing code (also enforced by the auto-managed block in `AGENTS.md`). OpenNext requires Next ≥ 16.4.5.
 - React 19, TypeScript (strict), Tailwind v4 (configured via `@theme` in `src/app/globals.css` — no tailwind.config).
-- DB: **Neon Postgres + Prisma driver adapter** → `prisma/schema.prisma` (`provider = "postgresql"`, `url = env("DATABASE_URL")` pooled, `directUrl = env("DIRECT_URL")`, `engineType = "client"`). Runtime client: `src/lib/db.ts` uses a hybrid `@prisma/adapter-neon` transport (`src/lib/db-adapter.ts`): ordinary queries go over Neon's stateless **HTTP** driver, while each transaction opens a short-lived **WebSocket** pool that is closed on commit/rollback. Neon project **`ancient-hall-97118808`** (upgraded 2026-11-20), branch **production** (`br-soft-dew-aoz4mgtd`), database **`neondb`**; `neon.ts` declares Object Storage bucket `assets`. **Schema: 63 tables** including Organizations, Channels, ClassHub, Subscriptions, ClassPulse, Guardians, SchoolClass/TimetableEntry and VerificationCode (migration `20261123120000_school_timetables_verification`). `neon deploy` pulls `DATABASE_URL` + `DATABASE_URL_UNPOOLED`; `DIRECT_URL` must equal the unpooled URL. **Schema changes need a migration in `prisma/migrations/`** — `npm run db:migrate` locally, `npm run db:migrate:deploy` to apply. Prisma CLI reads `.env` only. Seed `prisma/seed.ts` creates reference data + admin/moderator; `prisma/seed-plans.ts` creates subscription plans.
+- DB: **Neon Postgres + Prisma driver adapter** → `prisma/schema.prisma` (`provider = "postgresql"`, `url = env("DATABASE_URL")` pooled, `directUrl = env("DIRECT_URL")`, `engineType = "client"`). Runtime client: `src/lib/db.ts` uses a hybrid `@prisma/adapter-neon` transport (`src/lib/db-adapter.ts`): ordinary queries go over Neon's stateless **HTTP** driver, while each transaction opens a short-lived **WebSocket** pool that is closed on commit/rollback. Neon project **`ancient-hall-97118808`** (upgraded 2026-11-20), branch **production** (`br-soft-dew-aoz4mgtd`), database **`neondb`**; `neon.ts` declares Object Storage bucket `assets`. **Schema: 64 tables** including Organizations, Channels, ClassHub, Subscriptions, ClassPulse, Guardians, SchoolClass/TimetableEntry, VerificationCode and DeletionRequest (migration `20261125120000_deletion_requests`). `neon deploy` pulls `DATABASE_URL` + `DATABASE_URL_UNPOOLED`; `DIRECT_URL` must equal the unpooled URL. **Schema changes need a migration in `prisma/migrations/`** — `npm run db:migrate` locally, `npm run db:migrate:deploy` to apply. Prisma CLI reads `.env` only. Seed `prisma/seed.ts` creates reference data + admin/moderator; `prisma/seed-plans.ts` creates subscription plans.
 - Hosting: **Cloudflare Workers** via `@opennextjs/cloudflare` (`wrangler.jsonc`, `open-next.config.ts`); `npm run cf:build` / `cf:preview` / `cf:deploy`. Production is deployed from this machine with `npx wrangler deploy` (the Workers Builds API currently returns 403, so GitHub auto-deploy is not wired). A separate tiny Worker `gurulens-www` (`workers/www-redirect/`) owns the `www.gurulens.us/*` route and 308-redirects to the apex; `gurulens.us` is a Worker custom domain.
 - Search uses `contains` + `mode: "insensitive"` (Postgres is case-sensitive, unlike SQLite).
 - Tests: Vitest, config `vitest.config.ts` (node env, `@` → `src` alias), suites in `tests/` (ranking, format, totp, rate-limit, validation, media — 60 tests).
@@ -113,6 +113,43 @@ Production currently has exactly these two accounts and **zero teacher profiles*
 - Full-page visual review on the user's ultra-wide monitor (agent can't see images).
 
 ## 9. Changelog (newest first)
+
+### 2026-11-25 — Branded LMS subdomains, deletion approvals, link previews & admin access
+
+**Branded LMS on `{subdomain}.gurulens.us` (new product surface):**
+- New `LmsWorkspace`/`LmsCourse`/`LmsModule`/`LmsLesson`/`LmsEnrollment`/`LmsLessonProgress`/`LmsAnnouncement` models; migration `20261123160000_lms_workspaces`.
+- Subdomain routing via `src/proxy.ts` host rewrite to `/lms/[tenant]`; internal links use `getLmsBasePath()` (empty on tenant host, `/lms/<tenant>` otherwise). Session cookies honour `COOKIE_DOMAIN` (`.gurulens.us` in prod).
+- Public explainer `/lms`, claim form with live availability check, tenant home/courses/course-detail/lesson-player/dashboard/manage pages, course/lesson/announcement/enrollment/progress APIs.
+- Campus managers can claim a branded hub from the campus manage page (`LmsClaimCard`); LMS limits seeded into plans (`lms_courses`, `lms_lessons`, `lms_students`).
+- LMS smoke: 32/32 pass.
+
+**Campus profile banner blur:** campus cover now uses `scale-110 blur-[6px] saturate-[0.9]` with two gradient overlays fading into white (profile only; directory cards unchanged).
+
+**Production cleanup:** `scripts/cleanup-production.ts` executed against prod with `--execute` — all non-admin accounts and their content removed; 6 admin/moderator accounts retained; 60 tables truncated (231 content rows). Script kept for future use.
+
+**Channel/campus deletion with admin approval (new):**
+- New `DeletionRequest` model + migration `20261125120000_deletion_requests`.
+- Channels with ≥100 followers or owned by a campus require admin approval; small personal channels delete immediately. Campus deletion always requires admin approval (except system admins).
+- `DELETE /api/channels/[slug]` returns 202 `{ approvalRequired }` when approval is needed; `DELETE /api/organizations/[id]` requests campus deletion.
+- Admin API `GET/POST /api/admin/deletion-requests` + `/api/admin/deletion-requests/[id]` (approve → executes deletion + notifies requester; reject → notifies with reason).
+- Admin page `/admin/deletions` with pending/decided lists and approve/reject UI; AdminNav badge with pending count.
+- Danger zones added to channel settings and campus manage pages.
+
+**Link previews (Open Graph) & discoverability:**
+- Teacher profile OG description now includes follower + post counts; channel OG includes follower + post counts; campus OG includes member + channel counts.
+- Pricing page gained OG image + Twitter card.
+- Teacher profile gained `schema.org/Person` JSON-LD (image, description, knowsAbout).
+- Root metadata gained `twitter:site`.
+
+**Discoverability & plan-aware dashboard (new):**
+- Added "Learn" (LMS) item to the main site header nav so users can find the learning hub.
+- Teacher dashboard now shows a Learning Hub card (claim/manage hub, plan LMS-course limit) and a "Your plan" card listing active-plan features + limits (channels, classes, storage, LMS courses) with a change-plan link.
+- Student dashboard now shows a "My courses" card linking to the LMS.
+- Dashboard content now reflects the user's subscription plan (features + limits).
+
+**Admin access:** bootstrap admin accounts are `admin@gurulens.lk` and `admin@gurulens.us` (moderator: `moderator@gurulens.lk`). Passwords are generated at seed time and never stored recoverably — reset via a one-off script on request.
+
+**Verification:** typecheck 0 errors, lint 0 errors/0 warnings, 60/60 tests, Next build 91 routes, `cf:build` pass. Smoke admin artifact removed from production.
 
 ### 2026-11-23 — Plans, admin superpowers, school timetables, reel comments & verification
 
