@@ -32,6 +32,7 @@ const MAIN_SITE_PREFIXES = [
   "/privacy",
   "/guidelines",
   "/support",
+  "/contact",
   "/about",
   "/pricing",
   "/lms",
