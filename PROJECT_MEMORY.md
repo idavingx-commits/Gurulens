@@ -80,7 +80,7 @@ Production currently has exactly these two accounts and **zero teacher profiles*
 - **Media pointers**: `User.avatarKey`, `TeacherProfile.coverKey`, `Channel.avatarKey`, `Channel.coverKey`, `Organization.logoKey`, `Organization.coverKey` and `Class.coverKey` store **Media ids**; always render via `/api/media/<id>`. Channel images must use the dedicated `channel_avatar` / `channel_cover` upload kinds, campus images `org_logo` / `org_cover` (kind `avatar` still auto-wires the user's personal avatar). Legacy channel voice rows may still contain a storage key, which the channel page resolves through `Media.storageKey`.
 - **Campus quotas**: `Organization.settings` JSON holds `teacherQuota`, `channelQuota`, `classQuota`; defaults live in `orgQuotaDefaults()` (institute 10/25/50, school 30/50/100). Org channel/class creation is blocked at the limit, and adding teacher/staff seats respects `teacherQuota`. Only owners/admins (`canAdminister`) can change quotas, branches or team roles; managers (`canManage`) can edit branding and operate classes/channels.
 - **Date/purity lint rules**: never call `Date.now()`/`new Date()` directly in component render (react-hooks/purity). Use the helpers `maxDobForMinimumAge()` / `isExpired()` in `src/lib/format.ts` or derived state. Never synchronously setState in an effect body (set-state-in-effect) — derive during render or set inside timers/IO callbacks.
-- **Organization signup** (`/register/school`, `/register/institute`) is public and separate from `/api/organizations` (which requires a signed-in teacher/admin). It creates the owner account + starter teacher profile, org, owner membership, main branch and branded LMS workspace in one transaction, then activates a free plan. Only LKR 0 plans matching the audience (`campus` for schools, `institute` for institutes) are accepted; paid plans must stay behind contact-sales.
+- **Organization signup** (`/register/school`, `/register/institute`) is public and separate from `/api/organizations` (which requires a signed-in teacher/admin). It creates the owner account + starter teacher profile, org, owner membership, main branch and branded LMS workspace in one transaction, then activates a free plan. Only LKR 0 plans matching the audience (`campus` for schools, `institute` for institutes) are accepted; paid plans must stay behind contact-sales. Every organization gets **two free addresses** — campus page `gurulens.us/campus/<slug>` and learning hub `<subdomain>.gurulens.us`. No domain purchase is needed; the hub subdomain can be changed later in LMS → Hub settings.
 - **Contact details** are canonical in `src/lib/contact.ts` (`info@gurulens.us`, `0742366672`, WhatsApp `0764001179`, IneshDev (Pvt) Ltd). Never hardcode a different support address; import the constants/components instead.
 - Status enums: users `active | suspended | pending`; posts/reels `approved | pending | rejected | hidden`; reports `open | resolved | dismissed`.
 
@@ -109,7 +109,8 @@ Production currently has exactly these two accounts and **zero teacher profiles*
 - **Landing page** (`src/app/(site)/page.tsx`): floating blobs layer, hero (badge → headline w/ shimmer span → Sinhala subtitle → SearchBar → avatar stack + stats strip → subject chips), stats grid (CountUp), "Two ways in" cards (student brand-gradient + teacher dark-ink w/ `teacherCta`), trust note, top teachers, popular subjects, **"Latest from Teachers"** editorial section (`latest-from-teachers.tsx`: featured post + compact rail + fill/empty state), "Loved by students" review wall (real 5-star published reviews, masonry columns), how-it-works w/ ghost numbers, teacher CTA, FAQ (`<details>` accordions). Consts: `POPULAR_SUBJECTS`, `HOW_IT_WORKS`, `FAQS`, `teacherCta` (isEducator → `/studio` else `/register/teacher`).
 - **Auth pages**: split-screen shell (`(auth)/layout.tsx`) — sticky brand panel left (badge, shimmer headline, Sinhala sub, CountUp stats, 3 Sinhala bullets, live top-review quote card), form column right (34rem); login/student/teacher cards share the gradient top-bar + icon-chip header pattern; register chooser = two gradient cards mirroring landing plus a "Register your organization" block for schools/institutes. Forms use 2-col field grids (`sm:grid-cols-2`) for password+DOB, class-format+experience, etc.
 - **Organization signup forms** (`components/auth/OrganizationForm.tsx`): six sections (plan → owner → organization → branded hub → consent), live campus-URL and LMS-subdomain availability checks, Sinhala subcopy, free-launch plan cards, and contact fallback. Schools filter `planAudience(type) === "campus"`; institutes filter `"institute"`.
-- **LMS**: tenant pages use a dark brand-gradient hero with a glass featured/enrollment panel, `LmsCourseCard` with cover gradient + hover accent, dashboard SVG progress ring, and `ContactCtaCard` on public hub pages. Keep `getLmsBasePath()` for internal links and `ContactChannels`/`ContactInline` for help copy.
+- **LMS**: tenant pages use a dark brand-gradient hero with a glass featured/enrollment panel, `LmsCourseCard` with cover gradient + hover accent, dashboard SVG progress ring, and `ContactCtaCard` on public hub pages. The `/lms` landing uses a full-bleed auth-style ink-900 grid hero (eyebrow, gradient headline, stats, three glass cards) followed by a numbered roadmap. Keep `getLmsBasePath()` for internal links and `ContactChannels`/`ContactInline` for help copy.
+- **Contact CTA cards** (`ContactCtaCard`) always stack copy above the action buttons — never place the actions in a `flex-none row` beside text inside a narrow grid column, or the heading collapses to one word per line.
 
 ## 8. Backlog / ideas (not built yet)
 
@@ -121,6 +122,24 @@ Production currently has exactly these two accounts and **zero teacher profiles*
 - Full-page visual review on the user's ultra-wide monitor (agent can't see images).
 
 ## 9. Changelog (newest first)
+
+### 2026-11-28 — LMS theme alignment, roadmap, registration clarity & contact fix
+
+**LMS landing rebuilt in the auth brand-panel style:**
+- Replaced the rounded card hero with a full-bleed `bg-ink-900` brand panel: aurora glows, 54px grid, live-pulse eyebrow, `Launch your hub. / Teach without limits.` headline, Sinhala subcopy, CTAs, four stat columns and three glass highlight cards.
+- Full hero copy now states the hub address is included free and there is no domain to buy.
+- "Live in four steps" became a proper **LMS roadmap** with numbered gradient nodes, a connector line and time/outcome tags (`About 2 minutes`, `Modules & lessons`, etc.); nav label changed to "Roadmap".
+- Claim section gained a "No domain purchase needed" explainer comparing the campus page (`gurulens.us/campus/...`) with the learning hub (`yourname.gurulens.us`).
+
+**Registration clarity:**
+- Organization form section renamed **"Your free LMS address"**, field renamed "LMS address", with a two-address summary card and explicit "no domain purchase" copy. The address is still editable later in LMS → Hub settings.
+- `/register` organization block rebuilt as a dark premium panel with stacked School and Tuition institute cards, bilingual copy, feature chips and a "no domain purchase" footer. The old two-column tiles truncated Sinhala; tiles are now full-width.
+
+**Contact/investment layout fix:**
+- `ContactCtaCard` actions now stack below the copy instead of sitting in a `flex-none` row that squeezed the heading to one word per line (the contact page investment card had ~120px of text width). Added a grid/watermark treatment, investment company chip and larger balanced heading.
+- Measured at a 1200px viewport: investment card 518px wide, heading 518px wide and one line tall.
+
+**Verification:** typecheck/lint clean; browser screenshots checked at tablet width; desktop LMS hero checked via a 1200px iframe; contact card width measured at 1200px. No console errors.
 
 ### 2026-11-28 — Organization signup, contact & investment page, premium LMS pass
 

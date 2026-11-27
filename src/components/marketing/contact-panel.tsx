@@ -186,39 +186,70 @@ export function ContactCtaCard({
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-[1.75rem] border border-white bg-gradient-to-br from-ink-900 via-ink-800 to-brand-900 p-6 text-white shadow-xl sm:p-8",
+        "relative overflow-hidden rounded-[1.75rem] bg-gradient-to-br from-ink-900 via-ink-800 to-brand-900 p-6 text-white shadow-[0_28px_70px_-34px_rgba(5,16,38,0.8)] ring-1 ring-white/10 sm:p-8",
         className,
       )}
     >
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -top-16 -right-12 size-56 rounded-full bg-brand-500/30 blur-3xl"
+        className="pointer-events-none absolute -top-20 -right-16 size-64 rounded-full bg-brand-500/30 blur-3xl"
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -bottom-20 -left-10 size-56 rounded-full bg-accent-500/25 blur-3xl"
+        className="pointer-events-none absolute -bottom-24 -left-16 size-64 rounded-full bg-accent-500/25 blur-3xl"
       />
-      <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center">
-        <div className="min-w-0 flex-1">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-2.5 py-1 text-[9.5px] font-black tracking-[0.14em] uppercase backdrop-blur-sm">
-            <Icon name={topic === "investment" ? "chart" : topic === "partnership" ? "users" : "message"} size={11} />
-            {topic === "investment" ? "Investment" : topic === "partnership" ? "Partnerships" : "Pricing & offers"}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-[0.05]"
+        style={{
+          backgroundImage:
+            "linear-gradient(to right, #fff 1px, transparent 1px), linear-gradient(to bottom, #fff 1px, transparent 1px)",
+          backgroundSize: "42px 42px",
+        }}
+      />
+      <Icon
+        name={topic === "investment" ? "chart" : topic === "partnership" ? "users" : "message"}
+        size={200}
+        className="pointer-events-none absolute -right-8 -bottom-12 text-white/[0.05]"
+      />
+
+      <div className="relative">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-2.5 py-1 text-[9.5px] font-black tracking-[0.14em] uppercase ring-1 ring-white/10 backdrop-blur-sm">
+            <Icon
+              name={topic === "investment" ? "chart" : topic === "partnership" ? "users" : "message"}
+              size={11}
+            />
+            {topic === "investment"
+              ? "Investment"
+              : topic === "partnership"
+                ? "Partnerships"
+                : "Pricing & offers"}
           </span>
-          <h2 className="mt-2.5 max-w-xl text-[21px] leading-tight font-black tracking-tight sm:text-[25px]">
-            {heading}
-          </h2>
-          <p className="mt-1.5 max-w-xl text-[12.5px] leading-relaxed text-white/65">{copy}</p>
-          <p
-            lang="si"
-            className="font-si mt-2 max-w-xl text-[12px] leading-[1.85] font-semibold text-white/50"
-          >
-            මිල ගණන්, විශේෂ ඉදිරිපත් කිරීම් හෝ ආයෝජන ගැන කතා කරන්න — අපි සතුටින් උදව් කරන්නෙමු.
-          </p>
+          {topic === "investment" ? (
+            <span className="rounded-full bg-white/[0.07] px-2.5 py-1 text-[9.5px] font-bold text-white/50 ring-1 ring-white/10">
+              IneshDev (Pvt) Ltd
+            </span>
+          ) : null}
         </div>
-        <div className="flex flex-none flex-wrap items-center gap-2">
+
+        <h2 className="mt-3 max-w-2xl text-[22px] leading-tight font-black tracking-tight text-balance sm:text-[28px]">
+          {heading}
+        </h2>
+        <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-white/65 sm:text-[13.5px]">
+          {copy}
+        </p>
+        <p
+          lang="si"
+          className="font-si mt-2 max-w-2xl text-[12px] leading-[1.9] font-semibold text-white/50"
+        >
+          මිල ගණන්, විශේෂ ඉදිරිපත් කිරීම් හෝ ආයෝජන ගැන කතා කරන්න — අපි සතුටින් උදව් කරන්නෙමු.
+        </p>
+
+        <div className="mt-5 flex flex-wrap items-center gap-2">
           <a
             href={contactMailto(subject)}
-            className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-[12px] font-black text-ink-900 shadow-lg transition-transform hover:-translate-y-0.5"
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-4 py-2.5 text-[12px] font-black text-ink-900 shadow-lg transition-transform hover:-translate-y-0.5"
           >
             <Icon name="mail" size={14} /> {topic === "investment" ? "Request the deck" : "Email us"}
           </a>
@@ -226,7 +257,7 @@ export function ContactCtaCard({
             href={CONTACT_WHATSAPP_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2.5 text-[12px] font-bold text-white backdrop-blur-sm transition-colors hover:bg-white/20"
+            className="inline-flex items-center justify-center gap-2 rounded-full border border-white/25 bg-white/10 px-4 py-2.5 text-[12px] font-bold text-white backdrop-blur-sm transition-colors hover:bg-white/20"
           >
             <Icon name="message" size={14} /> WhatsApp
           </a>

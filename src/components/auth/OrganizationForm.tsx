@@ -182,7 +182,7 @@ export function OrganizationForm({
       throw new Error(slugResult.reason ?? "That campus URL is already taken.");
     }
     if (!hubResult.available) {
-      throw new Error(hubResult.reason ?? "That LMS subdomain is already taken.");
+      throw new Error(hubResult.reason ?? "That LMS address is already taken.");
     }
   }
 
@@ -195,7 +195,7 @@ export function OrganizationForm({
       return setError("Campus URL: use 3–50 lowercase letters, numbers or dashes.");
     }
     if (!SUBDOMAIN_PATTERN.test(cleanHub)) {
-      return setError("LMS subdomain: use 3–30 lowercase letters, numbers or dashes.");
+      return setError("LMS address: use 3–30 lowercase letters, numbers or dashes.");
     }
     if (website.trim() && !/^https?:\/\/.+/.test(website.trim())) {
       return setError("Website must start with http:// or https://");
@@ -501,9 +501,9 @@ export function OrganizationForm({
             />
           </Field>
           <Field
-            label="Campus URL"
+            label="Campus page URL"
             htmlFor="org-slug"
-            hint="Your public campus page on gurulens.us."
+            hint="Your public campus profile on gurulens.us — free."
             error={
               slugState === "taken"
                 ? (slugCheck?.reason ?? "That campus URL is already taken.")
@@ -602,18 +602,19 @@ export function OrganizationForm({
         </section>
 
         <section className="space-y-4">
-          <SectionLabel step={plans.length > 0 ? 4 : 3} title="Branded learning hub" />
+          <SectionLabel step={plans.length > 0 ? 4 : 3} title="Your free LMS address" />
           <p className="text-[12px] leading-relaxed text-ink-500">
-            We will create a free LMS workspace for your {isSchool ? "school" : "institute"} at the
-            subdomain below. You can change its branding and address later.
+            Every organization gets a complete learning hub for courses, lessons, learner progress
+            and announcements. This address is included free — there is no domain to buy. We create
+            it automatically, and you can change the name later.
           </p>
           <Field
-            label="LMS subdomain"
+            label="LMS address"
             htmlFor="org-hub"
-            hint="Courses, lessons, learner progress and announcements live here."
+            hint="Your hub opens at this address under gurulens.us."
             error={
               hubState === "taken"
-                ? (hubCheck?.reason ?? "That subdomain is already taken.")
+                ? (hubCheck?.reason ?? "That LMS address is already taken.")
                 : hubState === "invalid"
                   ? "Use 3–30 lowercase letters, numbers or dashes."
                   : null
@@ -651,6 +652,35 @@ export function OrganizationForm({
               ) : null}
             </span>
           </Field>
+
+          <div className="rounded-xl border border-brand-100 bg-gradient-to-br from-brand-50 via-white to-accent-50/70 p-3">
+            <p className="flex items-center gap-1.5 text-[9.5px] font-black tracking-[0.12em] text-brand-700 uppercase">
+              <Icon name="globe" size={12} /> Two free addresses, included
+            </p>
+            <div className="mt-2 space-y-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-1 rounded-lg bg-white/85 px-2.5 py-1.5 ring-1 ring-white">
+                <span className="text-[9px] font-black tracking-wide text-ink-400 uppercase">
+                  Campus page
+                </span>
+                <span className="font-mono text-[10.5px] font-bold text-ink-700">
+                  gurulens.us/campus/{cleanSlug || "your-school"}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-1 rounded-lg bg-white/85 px-2.5 py-1.5 ring-1 ring-white">
+                <span className="text-[9px] font-black tracking-wide text-ink-400 uppercase">
+                  Learning hub
+                </span>
+                <span className="font-mono text-[10.5px] font-bold text-ink-700">
+                  {cleanHub || "your-school"}.gurulens.us
+                </span>
+              </div>
+            </div>
+            <p className="mt-2 text-[10.5px] leading-relaxed text-ink-500">
+              No domain purchase is needed. Your hub is created with your account and can be
+              renamed later from settings.
+            </p>
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Hub tagline" htmlFor="org-hub-tagline" hint="Optional — shown under your hub name.">
               <Input
