@@ -148,7 +148,7 @@ export function LearnerPanel({ enrollments }: { enrollments: LearnerRow[] }) {
                   <Badge tone={STATUS_TONE[row.status] ?? "neutral"}>{row.status}</Badge>
                 </div>
                 <p className="truncate text-[11.5px] text-ink-400">
-                  {row.userEmail} Â· {row.courseTitle} Â· {timeAgo(row.enrolledAt)}
+                  {row.userEmail} · {row.courseTitle} · {timeAgo(row.enrolledAt)}
                 </p>
               </div>
 

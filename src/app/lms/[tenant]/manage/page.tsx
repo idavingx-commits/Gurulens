@@ -154,7 +154,7 @@ export default async function LmsManagePage({ params }: Props) {
       </div>
 
       {/* Share bar */}
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-brand-100 bg-gradient-to-r from-brand-50/80 to-accent-50/50 p-4">
+      <div className="glass flex flex-wrap items-center gap-3 rounded-card p-4">
         <span
           className="flex size-10 flex-none items-center justify-center rounded-xl text-white"
           style={{ backgroundColor: brand }}
@@ -180,7 +180,7 @@ export default async function LmsManagePage({ params }: Props) {
       </div>
 
       {/* Plan limits */}
-      <div className="rounded-2xl border border-ink-100 bg-white/70 p-4">
+      <div className="card p-4">
         <div className="flex flex-wrap items-center gap-3">
           <h3 className="text-[13px] font-extrabold text-ink-900">Plan usage</h3>
           <span className="rounded-full bg-brand-50 px-2.5 py-1 text-[10.5px] font-black text-brand-700 uppercase">

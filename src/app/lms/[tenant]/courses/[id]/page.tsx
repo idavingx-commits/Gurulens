@@ -54,6 +54,9 @@ export default async function LmsCoursePage({ params }: Props) {
   const firstLesson = course.modules
     .flatMap((module) => module.lessons)
     .find(() => true);
+  const totalMinutes = course.modules
+    .flatMap((module) => module.lessons)
+    .reduce((sum, lesson) => sum + (lesson.durationMin ?? 0), 0);
 
   return (
     <div className="space-y-6">
@@ -70,7 +73,7 @@ export default async function LmsCoursePage({ params }: Props) {
       </nav>
 
       {/* Hero */}
-      <section className="relative overflow-hidden rounded-[1.75rem] bg-ink-900 text-white shadow-xl">
+      <section className="relative overflow-hidden rounded-[1.9rem] bg-ink-900 text-white shadow-[0_30px_70px_-35px_rgba(5,16,38,0.8)]">
         {course.coverKey ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -82,74 +85,106 @@ export default async function LmsCoursePage({ params }: Props) {
           <div
             aria-hidden="true"
             className="absolute inset-0"
-            style={{ background: `linear-gradient(125deg, #07152e 0%, ${brand} 135%)` }}
+            style={{ background: `linear-gradient(125deg, #07152e 0%, ${brand} 145%)` }}
           />
         )}
         <div
           aria-hidden="true"
-          className="absolute inset-0 bg-gradient-to-r from-ink-900/85 via-ink-900/55 to-transparent"
+          className="absolute inset-0 bg-gradient-to-r from-ink-900/90 via-ink-900/60 to-ink-900/30"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute -top-20 -right-10 size-64 rounded-full bg-white/10 blur-3xl"
         />
 
-        <div className="relative px-5 py-6 sm:px-8 sm:py-8">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-white/15 px-2.5 py-1 text-[9.5px] font-black tracking-[0.12em] uppercase backdrop-blur-sm">
-              {LEVEL_LABEL[course.level] ?? course.level}
-            </span>
-            <span className="rounded-full bg-white/15 px-2.5 py-1 text-[9.5px] font-black tracking-wide uppercase backdrop-blur-sm">
-              {course.visibility === "public" ? "Open course" : "Members only"}
-            </span>
-            {course.status !== "published" ? (
-              <span className="rounded-full bg-warn-500 px-2.5 py-1 text-[9.5px] font-black uppercase">
-                {course.status}
+        <div className="relative grid gap-6 px-5 py-6 sm:px-8 sm:py-8 lg:grid-cols-[1fr_300px] lg:items-center">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="rounded-full bg-white/15 px-2.5 py-1 text-[9.5px] font-black tracking-[0.12em] uppercase backdrop-blur-sm">
+                {LEVEL_LABEL[course.level] ?? course.level}
               </span>
-            ) : null}
-            {course.enrollment?.status === "completed" ? (
-              <span className="rounded-full bg-success-500 px-2.5 py-1 text-[9.5px] font-black uppercase">
-                Completed
+              <span className="rounded-full bg-white/15 px-2.5 py-1 text-[9.5px] font-black tracking-wide uppercase backdrop-blur-sm">
+                {course.visibility === "public" ? "Open course" : "Members only"}
               </span>
-            ) : null}
-          </div>
-
-          <h1 className="mt-3 max-w-2xl text-[26px] leading-[1.12] font-black tracking-tight sm:text-[34px]">
-            {course.title}
-          </h1>
-          {course.description ? (
-            <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-white/70">
-              {course.description}
-            </p>
-          ) : null}
-
-          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11.5px] font-semibold text-white/65">
-            <span className="inline-flex items-center gap-1.5">
-              <Icon name="book-open" size={13} /> {course.modules.length} modules
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Icon name="play" size={13} /> {course.totalLessons} lessons
-            </span>
-            <span className="inline-flex items-center gap-1.5">
-              <Icon name="users" size={13} /> {course._count.enrollments} learners
-            </span>
-            {course.enrollment?.completedAt ? (
-              <span className="inline-flex items-center gap-1.5 text-success-300">
-                <Icon name="check" size={13} /> Finished
-              </span>
-            ) : null}
-          </div>
-
-          {started ? (
-            <div className="mt-5 max-w-md">
-              <div className="mb-1.5 flex items-center justify-between text-[11px] font-bold">
-                <span className="text-white/60">Your progress</span>
-                <span>{course.progress}%</span>
-              </div>
-              <ProgressBar
-                value={course.progress}
-                tone={course.progress >= 100 ? "success" : "brand"}
-                className="h-2 bg-white/20"
-              />
+              {course.status !== "published" ? (
+                <span className="rounded-full bg-warn-500 px-2.5 py-1 text-[9.5px] font-black uppercase">
+                  {course.status}
+                </span>
+              ) : null}
+              {course.enrollment?.status === "completed" ? (
+                <span className="rounded-full bg-success-500 px-2.5 py-1 text-[9.5px] font-black uppercase">
+                  Completed
+                </span>
+              ) : null}
             </div>
-          ) : (
-            <div className="mt-5">
+
+            <h1 className="mt-3 max-w-2xl text-[27px] leading-[1.1] font-black tracking-tight sm:text-[36px]">
+              {course.title}
+            </h1>
+            {course.description ? (
+              <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-white/70">
+                {course.description}
+              </p>
+            ) : null}
+
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[11.5px] font-semibold text-white/65">
+              <span className="inline-flex items-center gap-1.5">
+                <Icon name="grid" size={13} /> {course.modules.length} modules
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Icon name="play" size={13} /> {course.totalLessons} lessons
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Icon name="users" size={13} /> {course._count.enrollments} learners
+              </span>
+              {totalMinutes > 0 ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Icon name="clock" size={13} /> {totalMinutes} min of lessons
+                </span>
+              ) : null}
+              {course.enrollment?.completedAt ? (
+                <span className="inline-flex items-center gap-1.5 text-success-300">
+                  <Icon name="check" size={13} /> Finished
+                </span>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="rounded-[1.4rem] border border-white/20 bg-white/10 p-4 shadow-2xl backdrop-blur-md">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/12 px-2.5 py-1 text-[9px] font-black tracking-[0.14em] uppercase">
+              <Icon name="sparkles" size={10} /> Free during launch
+            </span>
+
+            {started ? (
+              <>
+                <div className="mt-3 flex items-end justify-between">
+                  <div>
+                    <p className="text-[9.5px] font-black tracking-[0.14em] text-white/45 uppercase">
+                      Your progress
+                    </p>
+                    <p className="mt-0.5 text-[28px] leading-none font-black tabular-nums">
+                      {course.progress}%
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-white/12 px-2 py-1 text-[9.5px] font-bold text-white/70">
+                    {course.completedLessons}/{course.totalLessons} lessons
+                  </span>
+                </div>
+                <ProgressBar
+                  value={course.progress}
+                  tone={course.progress >= 100 ? "success" : "brand"}
+                  className="mt-3 h-2 bg-white/20"
+                />
+              </>
+            ) : (
+              <p className="mt-3 text-[12.5px] leading-relaxed text-white/65">
+                {course.visibility === "public"
+                  ? "Enroll in one click and start learning immediately."
+                  : "Request to join and unlock every lesson in this course."}
+              </p>
+            )}
+
+            <div className="mt-4">
               <CourseEnrollButton
                 courseId={course.id}
                 base={base}
@@ -160,7 +195,21 @@ export default async function LmsCoursePage({ params }: Props) {
                 status={course.enrollment?.status ?? null}
               />
             </div>
-          )}
+
+            <ul className="mt-4 space-y-1.5 border-t border-white/15 pt-3 text-[10.5px] font-semibold text-white/55">
+              <li className="flex items-center gap-1.5">
+                <Icon name="check" size={11} className="text-success-300" /> Progress saved
+                automatically
+              </li>
+              <li className="flex items-center gap-1.5">
+                <Icon name="check" size={11} className="text-success-300" /> Learn at your own pace
+              </li>
+              <li className="flex items-center gap-1.5">
+                <Icon name="check" size={11} className="text-success-300" /> Works on mobile and
+                desktop
+              </li>
+            </ul>
+          </div>
         </div>
       </section>
 
@@ -215,8 +264,21 @@ export default async function LmsCoursePage({ params }: Props) {
                       <p className="truncate text-[11.5px] text-ink-500">{module.description}</p>
                     ) : null}
                   </div>
-                  <span className="ml-auto flex-none text-[11px] font-bold text-ink-400">
-                    {module.lessons.length} lesson{module.lessons.length === 1 ? "" : "s"}
+                  <span className="ml-auto flex flex-none items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[10px] font-bold text-ink-500 ring-1 ring-ink-200">
+                    <Icon
+                      name="check"
+                      size={10}
+                      strokeWidth={3}
+                      className={
+                        module.lessons.length > 0 &&
+                        module.lessons.filter((lesson) => lesson.progress?.length).length ===
+                          module.lessons.length
+                          ? "text-success-600"
+                          : "text-ink-300"
+                      }
+                    />
+                    {module.lessons.filter((lesson) => lesson.progress?.length).length}/
+                    {module.lessons.length}
                   </span>
                 </div>
 

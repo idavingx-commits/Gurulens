@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 
+import { Logo } from "@/components/layout/Logo";
 import { LmsNav } from "@/components/lms/LmsNav";
 import { Avatar } from "@/components/ui/avatar";
 import { Icon } from "@/components/ui/icons";
@@ -16,10 +17,12 @@ import {
 export default async function LmsTenantLayout({ children, params }: LayoutProps<"/lms/[tenant]">) {
   const { tenant } = (await params) as { tenant: string };
   const workspace = await getLmsWorkspaceBySubdomain(tenant);
+  const mainSiteUrl = process.env.NODE_ENV === "production" ? "https://gurulens.us" : "/";
 
   if (!workspace) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center bg-gradient-to-br from-ink-50 via-brand-50/40 to-accent-50/30 px-4 text-center">
+      <div className="aurora flex min-h-dvh flex-col items-center justify-center px-4 text-center">
+        <Logo href={mainSiteUrl} className="mb-6" />
         <span className="flex size-16 items-center justify-center rounded-3xl bg-white text-brand-600 shadow-xl ring-1 ring-ink-100">
           <Icon name="school" size={28} />
         </span>
@@ -38,7 +41,7 @@ export default async function LmsTenantLayout({ children, params }: LayoutProps<
             <Icon name="sparkles" size={15} /> Create your LMS
           </Link>
           <Link
-            href="/"
+            href={mainSiteUrl}
             className="inline-flex items-center gap-2 rounded-full border border-ink-200 bg-white px-5 py-2.5 text-[13px] font-bold text-ink-700 hover:border-brand-300 hover:text-brand-700"
           >
             <Icon name="arrow-left" size={14} /> GuruLens home
@@ -57,12 +60,12 @@ export default async function LmsTenantLayout({ children, params }: LayoutProps<
 
   return (
     <div
-      className="flex min-h-dvh flex-col bg-ink-50/70"
+      className="aurora flex min-h-dvh flex-col"
       style={{ "--lms-brand": brand } as CSSProperties}
     >
       <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${brand}, #6d5bff)` }} />
 
-      <header className="sticky top-0 z-40 border-b border-ink-100 bg-white/85 backdrop-blur-xl">
+      <header className="glass sticky top-0 z-40 rounded-none border-x-0 border-t-0">
         <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-2.5 sm:px-6">
           <Link href={base || "/"} className="flex min-w-0 flex-none items-center gap-2.5">
             {logoKey ? (
@@ -94,6 +97,16 @@ export default async function LmsTenantLayout({ children, params }: LayoutProps<
             <div className="hidden md:block">
               <LmsNav base={base} canManage={access.canManage} signedIn={Boolean(auth)} />
             </div>
+            <span aria-hidden="true" className="hidden h-5 w-px bg-ink-200/80 sm:block" />
+            <Link
+              href={mainSiteUrl}
+              title="GuruLens home"
+              className="hidden items-center gap-1.5 rounded-full border border-ink-100 bg-white/70 px-2.5 py-1.5 transition-colors hover:border-brand-200 hover:text-brand-700 sm:inline-flex"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/brand/gurulens-icon.png" alt="" className="size-4 object-contain" />
+              <span className="text-[10.5px] font-black tracking-wide text-ink-500">GuruLens</span>
+            </Link>
             {auth ? (
               <Link
                 href="/settings"
@@ -123,15 +136,16 @@ export default async function LmsTenantLayout({ children, params }: LayoutProps<
 
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-5 sm:px-6 sm:py-7">{children}</main>
 
-      <footer className="mt-8 border-t border-ink-100 bg-white/70">
-        <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-2 px-4 py-4 text-center sm:flex-row sm:px-6 sm:text-left">
-          <p className="text-[11.5px] font-semibold text-ink-400">
-            {name} · powered by{" "}
-            <Link href="/" className="font-bold text-brand-600 hover:text-brand-700">
-              GuruLens
-            </Link>
-          </p>
+      <footer className="mt-8 border-t border-ink-100/80 bg-white/60 backdrop-blur-md">
+        <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-3 px-4 py-5 text-center sm:flex-row sm:px-6 sm:text-left">
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+            <span className="text-[11.5px] font-semibold text-ink-400">{name} · powered by</span>
+            <Logo href={mainSiteUrl} className="[&_img]:h-6 [&_span]:text-[14px]" />
+          </div>
           <div className="flex items-center gap-3 text-[10.5px] font-semibold text-ink-400">
+            <Link href="/contact" className="hover:text-ink-700">
+              Contact
+            </Link>
             <Link href="/terms" className="hover:text-ink-700">
               Terms
             </Link>

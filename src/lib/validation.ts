@@ -82,6 +82,57 @@ export const registerTeacherSchema = registerStudentSchema.extend({
   phone: z.string().trim().min(9).max(20).optional(),
 });
 
+// ---------------------------------------------------------------------------
+// Organization registration (school / tuition institute)
+// ---------------------------------------------------------------------------
+
+export const orgSlugSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .regex(
+    /^[a-z0-9][a-z0-9-]{1,48}[a-z0-9]$/,
+    "Use 3–50 lowercase letters, numbers or dashes.",
+  );
+
+export const registerOrganizationSchema = z.object({
+  type: z.enum(["school", "institute"]),
+  owner: z.object({
+    name: nameSchema,
+    email: emailSchema,
+    password: passwordSchema,
+    dateOfBirth: z.coerce.date(),
+    phone: z.string().trim().min(9).max(20).optional(),
+  }),
+  organization: z.object({
+    name: z.string().trim().min(2, "Organization name is too short.").max(120),
+    slug: orgSlugSchema,
+    nameSi: z.string().trim().max(120).optional(),
+    description: z.string().trim().max(1000).optional(),
+    email: emailSchema.optional(),
+    phone: z.string().trim().max(30).optional(),
+    website: z
+      .string()
+      .trim()
+      .max(200)
+      .refine((value) => !value || /^https?:\/\/.+/.test(value), {
+        message: "Website must start with http:// or https://.",
+      })
+      .optional(),
+    address: z.string().trim().max(200).optional(),
+  }),
+  lmsSubdomain: z.string().trim().toLowerCase().min(3).max(30),
+  lmsName: z.string().trim().min(2).max(120).optional(),
+  lmsTagline: z.string().trim().max(120).optional(),
+  brandColor: z
+    .string()
+    .trim()
+    .regex(/^#[0-9a-f]{6}$/i, "Use a 6-digit hex colour like #0094fd.")
+    .optional(),
+  planSlug: z.string().trim().min(1).max(80).optional(),
+  acceptTerms: z.literal(true),
+});
+
 export const loginSchema = z.object({
   email: emailSchema,
   password: z.string().min(1).max(200),

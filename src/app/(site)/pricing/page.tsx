@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 
+import { ContactCtaCard } from "@/components/marketing/contact-panel";
 import { getAuth } from "@/lib/auth";
 import { ADMIN_ROLES } from "@/lib/constants";
 import { parsePlanFeatures, parsePlanLimits } from "@/lib/plan-catalog";
@@ -58,6 +59,10 @@ export default async function PricingPage() {
         isAuthed={Boolean(auth)}
         isAdmin={Boolean(auth && ADMIN_ROLES.includes(auth.user.role))}
       />
+
+      <div className="mt-8">
+        <ContactCtaCard topic="pricing" />
+      </div>
     </div>
   );
 }

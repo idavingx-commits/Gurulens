@@ -38,6 +38,25 @@ const OPTIONS = [
   },
 ];
 
+const ORG_OPTIONS = [
+  {
+    href: "/register/school",
+    icon: "school",
+    title: "School",
+    si: "පාසලක් ලියාපදිංචි කරන්න",
+    blurb: "Campus profile, staff & student accounts, timetables and a branded LMS.",
+    accent: "from-success-500 to-brand-600",
+  },
+  {
+    href: "/register/institute",
+    icon: "users",
+    title: "Tuition institute",
+    si: "ටියුෂන් ආයතනයක් ලියාපදිංචි කරන්න",
+    blurb: "Multiple teachers, branches, classes, fee-ready plans and your own learning hub.",
+    accent: "from-accent-500 to-brand-600",
+  },
+] as const;
+
 export default function RegisterChooserPage() {
   return (
     <div className="animate-fade-up space-y-5">
@@ -52,8 +71,8 @@ export default function RegisterChooserPage() {
         />
 
         <div className="relative">
-          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-accent-600 text-2xl shadow-lg shadow-brand-500/25 ring-4 ring-white">
-            <span aria-hidden="true">👋</span>
+          <div className="mx-auto flex size-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-accent-600 text-white shadow-lg shadow-brand-500/25 ring-4 ring-white">
+            <Icon name="user-plus" size={26} strokeWidth={2.1} />
           </div>
           <h1 className="mt-4 text-[28px] leading-tight font-black tracking-tight text-ink-900">
             Join{" "}
@@ -178,6 +197,71 @@ export default function RegisterChooserPage() {
           approves it before class timetables unlock.
         </p>
       </div>
+
+      <section className="relative overflow-hidden rounded-[1.6rem] border border-white bg-gradient-to-br from-brand-50 via-white to-accent-50 p-5 shadow-lg ring-1 ring-ink-100/80 sm:p-6">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-16 -right-14 size-44 rounded-full bg-accent-100/70 blur-3xl"
+        />
+        <div className="relative">
+          <div className="flex items-start gap-3.5">
+            <span className="flex size-11 flex-none items-center justify-center rounded-2xl bg-white text-brand-600 shadow-sm ring-1 ring-ink-100">
+              <Icon name="school" size={21} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-[18px] leading-tight font-black tracking-tight text-ink-900">
+                  Register your organization
+                </h2>
+                <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[9px] font-black tracking-wide text-brand-700 uppercase">
+                  Schools & institutes
+                </span>
+              </div>
+              <p
+                lang="si"
+                className="font-si text-[11.5px] leading-[1.8] font-bold text-ink-500"
+              >
+                පාසලක් හෝ ටියුෂන් ආයතනයක් නම්, ඔබේ campus එක සහ branded LMS එක එකවර ආරම්භ කරන්න.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {ORG_OPTIONS.map((org) => (
+              <Link
+                key={org.href}
+                href={org.href}
+                className="group relative overflow-hidden rounded-2xl border border-white bg-white/90 p-4 ring-1 ring-ink-100 transition-all hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-lg"
+              >
+                <div className="flex items-center gap-2.5">
+                  <span
+                    className={`flex size-9 flex-none items-center justify-center rounded-xl bg-gradient-to-br ${org.accent} text-white shadow-sm`}
+                  >
+                    <Icon name={org.icon} size={17} />
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="text-[13.5px] font-extrabold text-ink-900">{org.title}</h3>
+                    <p lang="si" className="font-si truncate text-[10.5px] font-bold text-ink-400">
+                      {org.si}
+                    </p>
+                  </div>
+                  <Icon
+                    name="arrow-right"
+                    size={14}
+                    className="ml-auto flex-none text-ink-300 transition-transform group-hover:translate-x-0.5 group-hover:text-brand-600"
+                  />
+                </div>
+                <p className="mt-2 text-[11.5px] leading-relaxed text-ink-500">{org.blurb}</p>
+              </Link>
+            ))}
+          </div>
+
+          <p className="mt-3 flex items-center gap-1.5 text-[10.5px] font-semibold text-ink-400">
+            <Icon name="sparkles" size={11} className="text-brand-500" />
+            Includes a free branded hub at yourname.gurulens.us during launch.
+          </p>
+        </div>
+      </section>
 
       <div className="text-center">
         <p className="text-sm text-ink-500">

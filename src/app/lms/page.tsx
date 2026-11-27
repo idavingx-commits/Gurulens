@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { SiteFooter } from "@/components/layout/SiteFooter";
+import { Logo } from "@/components/layout/Logo";
 import { LmsClaimForm } from "@/components/lms/LmsClaimForm";
+import { ContactChannels, ContactCtaCard } from "@/components/marketing/contact-panel";
 import { Icon } from "@/components/ui/icons";
 import { SectionHeader } from "@/components/ui/primitives";
 import { getAuth } from "@/lib/auth";
@@ -94,20 +97,21 @@ export default async function LmsLandingPage() {
   const auth = await getAuth();
 
   return (
-    <div className="min-h-dvh bg-gradient-to-b from-ink-50 via-white to-brand-50/40">
-      <header className="sticky top-0 z-40 border-b border-ink-100 bg-white/80 backdrop-blur-xl">
+    <div className="aurora min-h-dvh">
+      <header className="glass sticky top-0 z-40 rounded-none border-x-0 border-t-0">
         <div className="mx-auto flex w-full max-w-6xl items-center gap-3 px-4 py-3 sm:px-6">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="flex size-8 items-center justify-center rounded-xl bg-gradient-to-br from-brand-500 to-accent-600 text-white shadow-md">
-              <Icon name="sparkles" size={16} />
+          <div className="flex items-center gap-2.5">
+            <Logo />
+            <span className="rounded-full bg-gradient-to-r from-brand-600 to-accent-500 px-2 py-0.5 text-[9.5px] font-black tracking-[0.14em] text-white uppercase shadow-sm">
+              LMS
             </span>
-            <span className="text-[15px] font-black tracking-tight text-ink-900">GuruLens LMS</span>
-          </Link>
+          </div>
           <nav className="ml-auto hidden items-center gap-1 md:flex">
             {[
               { href: "#features", label: "Features" },
               { href: "#how", label: "How it works" },
               { href: "#audiences", label: "Who it's for" },
+              { href: "/contact", label: "Contact" },
             ].map((item) => (
               <a
                 key={item.href}
@@ -127,7 +131,7 @@ export default async function LmsLandingPage() {
             </Link>
             <a
               href="#claim"
-              className="inline-flex items-center gap-1.5 rounded-full bg-ink-900 px-4 py-2 text-[12.5px] font-bold text-white transition-colors hover:bg-ink-800"
+              className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-b from-brand-500 to-brand-600 px-4 py-2 text-[12.5px] font-bold text-white shadow-[0_6px_20px_rgba(0,118,214,0.35)] transition-all hover:brightness-105"
             >
               Claim your hub
             </a>
@@ -161,6 +165,12 @@ export default async function LmsLandingPage() {
               A complete learning management system for private teachers, tuition institutes and
               schools. Build courses, publish lessons, enroll learners and track progress — all from
               your own branded address.
+            </p>
+            <p
+              lang="si"
+              className="font-si mt-2.5 max-w-xl text-[13px] leading-[1.85] font-semibold text-white/55"
+            >
+              ඔබේම ලිපිනයකින් පාඩම්, සිසුන් සහ ප්‍රගතිය එකම තැනකින් කළමනාකරණය කරන්න.
             </p>
 
             <div className="mt-6 flex flex-wrap gap-2.5">
@@ -227,7 +237,7 @@ export default async function LmsLandingPage() {
                 <span className="absolute top-4 right-4 text-[34px] leading-none font-black text-ink-100">
                   {index + 1}
                 </span>
-                <span className="flex size-11 items-center justify-center rounded-2xl bg-accent-50 text-accent-600">
+                <span className="flex size-11 items-center justify-center rounded-2xl bg-accent-100 text-accent-600">
                   <Icon name={step.icon} size={20} />
                 </span>
                 <h3 className="mt-3 text-[14.5px] font-extrabold text-ink-900">{step.title}</h3>
@@ -309,14 +319,23 @@ export default async function LmsLandingPage() {
           </div>
         </section>
 
-        <p className="mt-16 text-center text-[12px] text-ink-400">
-          Questions?{" "}
-          <Link href="/contact" className="font-bold text-brand-600 hover:text-brand-700">
-            Talk to the GuruLens team
-          </Link>
-          .
-        </p>
+        <section id="contact" className="scroll-mt-24 pt-14">
+          <SectionHeader
+            title="Talk to the GuruLens team"
+            subtitle="Plans, school or institute onboarding, partnerships and investment."
+          />
+          <ContactChannels />
+          <div className="mt-4">
+            <ContactCtaCard
+              topic="partnership"
+              title="Bring your campus online with GuruLens"
+              body="We can help you set up staff accounts, your campus page and a branded learning hub — free during launch."
+            />
+          </div>
+        </section>
       </main>
+
+      <SiteFooter />
     </div>
   );
 }

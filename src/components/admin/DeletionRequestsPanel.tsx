@@ -4,6 +4,8 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icons";
+import { Field, Textarea } from "@/components/ui/input";
+import { Badge } from "@/components/ui/primitives";
 import { Spinner } from "@/components/ui/interactive";
 import { apiFetch, ClientApiError } from "@/lib/client";
 import { timeAgo } from "@/lib/format";
@@ -63,7 +65,7 @@ export function DeletionRequestsPanel({ initial }: { initial: Row[] }) {
 
   if (rows.length === 0) {
     return (
-      <div className="rounded-2xl border border-ink-100 bg-white/70 p-8 text-center text-[13px] text-ink-500">
+      <div className="card p-8 text-center text-[13px] text-ink-500">
         No deletion requests yet.
       </div>
     );
@@ -83,13 +85,18 @@ export function DeletionRequestsPanel({ initial }: { initial: Row[] }) {
             Pending ({pending.length})
           </h3>
           {pending.map((r) => (
-            <div key={r.id} className="overflow-hidden rounded-2xl border border-ink-100 bg-white/80">
+            <div key={r.id} className="card overflow-hidden">
               <div className="flex flex-wrap items-start gap-3 p-4">
                 <span className="flex size-10 flex-none items-center justify-center rounded-xl bg-danger-100 text-danger-600">
                   <Icon name={r.targetType === "channel" ? "radio" : "school"} size={16} />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[14px] font-extrabold text-ink-900">{r.targetLabel}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-[14px] font-extrabold text-ink-900">{r.targetLabel}</p>
+                    <Badge tone="danger" icon="clock">
+                      Pending
+                    </Badge>
+                  </div>
                   <p className="text-[11.5px] text-ink-500">
                     {r.targetType === "channel" ? "Channel" : "Campus"} · requested by{" "}
                     <span className="font-semibold text-ink-700">{r.requestedBy.name}</span>{" "}
@@ -104,17 +111,20 @@ export function DeletionRequestsPanel({ initial }: { initial: Row[] }) {
 
               {rejectingId === r.id ? (
                 <div className="space-y-3 border-t border-ink-100 bg-ink-50/60 p-4">
-                  <label className="block text-[12px] font-bold text-ink-700">
-                    Reason for rejection (required)
-                  </label>
-                  <textarea
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    rows={3}
-                    maxLength={500}
-                    className="w-full rounded-xl border border-ink-200 bg-white p-2 text-[13px] text-ink-900 focus:border-brand-400 focus:outline-none"
-                    placeholder="Explain why this deletion was not approved…"
-                  />
+                  <Field
+                    label="Reason for rejection (required)"
+                    htmlFor={`reject-note-${r.id}`}
+                  >
+                    <Textarea
+                      id={`reject-note-${r.id}`}
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                      rows={3}
+                      maxLength={500}
+                      className="min-h-20"
+                      placeholder="Explain why this deletion was not approved…"
+                    />
+                  </Field>
                   <div className="flex flex-wrap gap-2">
                     <Button
                       onClick={() => void decide(r.id, "reject")}
@@ -167,7 +177,7 @@ export function DeletionRequestsPanel({ initial }: { initial: Row[] }) {
           {decided.map((r) => (
             <div
               key={r.id}
-              className="flex flex-wrap items-center gap-3 rounded-2xl border border-ink-100 bg-white/60 p-4"
+              className="card flex flex-wrap items-center gap-3 p-4"
             >
               <span
                 className={
@@ -179,7 +189,12 @@ export function DeletionRequestsPanel({ initial }: { initial: Row[] }) {
                 <Icon name={r.status === "approved" ? "check" : "x"} size={14} />
               </span>
               <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-bold text-ink-900">{r.targetLabel}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-[13px] font-bold text-ink-900">{r.targetLabel}</p>
+                  <Badge tone={r.status === "approved" ? "success" : "danger"}>
+                    {r.status === "approved" ? "Approved" : "Rejected"}
+                  </Badge>
+                </div>
                 <p className="text-[11.5px] text-ink-500">
                   {r.targetType === "channel" ? "Channel" : "Campus"} ·{" "}
                   {r.status === "approved" ? "Approved" : "Rejected"} by{" "}

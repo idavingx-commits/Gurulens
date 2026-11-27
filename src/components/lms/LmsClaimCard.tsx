@@ -67,7 +67,7 @@ export function LmsClaimCard({
     : null;
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-brand-100 bg-gradient-to-br from-brand-50/70 via-white to-accent-50/50">
+    <section className="glass overflow-hidden rounded-card bg-gradient-to-br from-brand-50/70 via-white to-accent-100/40">
       <div className="flex flex-wrap items-start gap-3 p-5">
         <span className="flex size-11 flex-none items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-accent-600 text-white shadow-lg shadow-brand-500/25">
           <Icon name="globe" size={20} />
@@ -80,7 +80,7 @@ export function LmsClaimCard({
             </span>
           </div>
           <p className="mt-1 text-[12.5px] leading-relaxed text-ink-500">
-            Launch a full course platform for {organizationName} at its own address â€” courses,
+            Launch a full course platform for {organizationName} at its own address — courses,
             lessons, learners and progress tracking, all in one place.
           </p>
         </div>
@@ -163,7 +163,7 @@ export function LmsClaimCard({
               {busy ? <Spinner size={14} /> : <Icon name="zap" size={14} />} Claim hub
             </Button>
             <span className="text-[11.5px] text-ink-400">
-              Free during launch Â· payment plans arrive later with notice.
+              Free during launch · payment plans arrive later with notice.
             </span>
           </div>
         </form>

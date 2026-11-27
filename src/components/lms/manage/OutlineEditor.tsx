@@ -215,7 +215,7 @@ export function OutlineEditor({
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-[12.5px] font-semibold text-ink-500">
-          {modules.length} module{modules.length === 1 ? "" : "s"} Â· {totalLessons} lesson
+          {modules.length} module{modules.length === 1 ? "" : "s"} · {totalLessons} lesson
           {totalLessons === 1 ? "" : "s"}
         </span>
         <div className="ml-auto flex gap-2">
@@ -316,7 +316,7 @@ export function OutlineEditor({
                         id={`mod-${moduleIndex}-title`}
                         value={module.title}
                         onChange={(event) => updateModule(moduleIndex, { title: event.target.value })}
-                        placeholder="Week 1 â€” Algebra fundamentals"
+                        placeholder="Week 1 — Algebra fundamentals"
                         maxLength={160}
                       />
                     </Field>
@@ -390,7 +390,7 @@ export function OutlineEditor({
                                     videoUrl: event.target.value,
                                   })
                                 }
-                                placeholder="https://â€¦"
+                                placeholder="https://…"
                                 maxLength={500}
                               />
                             </Field>
@@ -429,7 +429,7 @@ export function OutlineEditor({
                                   content: event.target.value,
                                 })
                               }
-                              placeholder={"Explain the conceptâ€¦\n\n- Key point one\n- Key point two"}
+                              placeholder={"Explain the concept…\n\n- Key point one\n- Key point two"}
                               maxLength={30000}
                               className="min-h-24 font-mono text-[12.5px]"
                             />
@@ -447,7 +447,7 @@ export function OutlineEditor({
                             }
                             className="size-4 rounded border-ink-300 accent-brand-600"
                           />
-                          Preview lesson â€” visible to everyone before enrolling
+                          Preview lesson — visible to everyone before enrolling
                           {lesson.isPreview ? (
                             <Badge tone="brand" className="ml-1">
                               Preview

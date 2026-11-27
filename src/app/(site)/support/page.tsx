@@ -62,11 +62,16 @@ export default function SupportPage() {
 
       <StaticSection title="Contact us">
         <p>
-          Email <strong className="text-ink-800">support@gurulens.lk</strong> — we usually reply
-          within 2 working days.
+          Email <strong className="text-ink-800">info@gurulens.us</strong> or call{" "}
+          <strong className="text-ink-800">0742366672</strong> — we usually reply within 2 working
+          days.
         </p>
         <p className="text-[13px] text-ink-400">
-          Before you write, check our{" "}
+          Need pricing, offers or investment details?{" "}
+          <Link href="/contact" className="font-bold text-brand-600 hover:underline">
+            Visit our contact page
+          </Link>
+          . Before you write, check our{" "}
           <Link href="/guidelines" className="font-bold text-brand-600 hover:underline">
             Community Guidelines
           </Link>{" "}

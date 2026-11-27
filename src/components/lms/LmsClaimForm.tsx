@@ -102,7 +102,7 @@ export function LmsClaimForm({ signedIn }: { signedIn: boolean }) {
 
   return (
     <form onSubmit={submit} className="card overflow-hidden">
-      <div className="border-b border-ink-100 bg-gradient-to-r from-brand-50/80 to-accent-50/50 px-5 py-4">
+      <div className="border-b border-ink-100 bg-gradient-to-r from-brand-50/80 to-accent-100/40 px-5 py-4">
         <h3 className="text-[15px] font-extrabold text-ink-900">Reserve your address</h3>
         <p className="mt-0.5 text-[12px] text-ink-500">
           Choose a name — we&apos;ll build your hub around it.

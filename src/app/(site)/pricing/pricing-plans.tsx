@@ -91,8 +91,10 @@ function PlanAction({
     if (!isAuthed) {
       const href =
         audience === "campus"
-          ? "/login?redirect=/campus/create"
-          : `/register/teacher?plan=${plan.slug}`;
+          ? `/register/school?plan=${plan.slug}`
+          : audience === "institute"
+            ? `/register/institute?plan=${plan.slug}`
+            : `/register/teacher?plan=${plan.slug}`;
       return (
         <Link
           href={href}

@@ -179,7 +179,7 @@ export function AnnouncementPanel({
                     {item.body}
                   </p>
                   <p className="mt-2 text-[11px] font-semibold text-ink-400">
-                    {item.authorName ?? "Hub team"} Â· {timeAgo(item.createdAt)}
+                    {item.authorName ?? "Hub team"} · {timeAgo(item.createdAt)}
                   </p>
                 </div>
                 <button

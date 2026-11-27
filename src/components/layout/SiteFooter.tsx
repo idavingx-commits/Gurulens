@@ -1,6 +1,14 @@
 import Link from "next/link";
 
 import { Logo } from "@/components/layout/Logo";
+import {
+  CONTACT_EMAIL,
+  CONTACT_MAILTO,
+  CONTACT_PHONE,
+  CONTACT_PHONE_TEL,
+  CONTACT_WHATSAPP,
+  CONTACT_WHATSAPP_URL,
+} from "@/lib/contact";
 
 const COLUMNS: Array<{ title: string; links: Array<{ href: string; label: string }> }> = [
   {
@@ -25,6 +33,7 @@ const COLUMNS: Array<{ title: string; links: Array<{ href: string; label: string
     title: "Company",
     links: [
       { href: "/about", label: "About GuruLens" },
+      { href: "/contact", label: "Contact & investment" },
       { href: "/privacy", label: "Privacy Policy" },
       { href: "/terms", label: "Terms of Service" },
       { href: "/support", label: "Support" },
@@ -55,6 +64,24 @@ export function SiteFooter() {
               Ratings reflect verified student experiences. They are community signals, not a
               guarantee of exam results.
             </p>
+            <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] font-semibold text-ink-300">
+              <a href={CONTACT_MAILTO} className="hover:text-white">
+                {CONTACT_EMAIL}
+              </a>
+              <span className="text-ink-600" aria-hidden="true">·</span>
+              <a href={`tel:${CONTACT_PHONE_TEL}`} className="hover:text-white">
+                {CONTACT_PHONE}
+              </a>
+              <span className="text-ink-600" aria-hidden="true">·</span>
+              <a
+                href={CONTACT_WHATSAPP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-white"
+              >
+                WhatsApp {CONTACT_WHATSAPP}
+              </a>
+            </div>
           </div>
 
           {COLUMNS.map((col) => (

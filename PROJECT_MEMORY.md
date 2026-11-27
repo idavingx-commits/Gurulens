@@ -44,8 +44,10 @@ Key dirs: `src/app/(site)` public pages, `src/app/(auth)` login/register, `src/a
   2. `npm run lint` (exit 0, zero warnings)
   3. `npm test` (60 tests pass)
   4. `npm run build` (exit 0)
-  5. Render check with curl, e.g.:
+  5. `npm run cf:build` (OpenNext Worker bundle, exit 0)
+  6. Render check with curl, e.g.:
      `$st=(& curl.exe -s -o "$tmp\page.html" -w "%{http_code}" "http://localhost:3000/path") -join ""`
+- Tenant subdomain check in dev: `curl.exe -H "Host: <tenant>.gurulens.us" http://localhost:3000/` — the proxy rewrites to `/lms/<tenant>`. In production, `*.gurulens.us` has wildcard DNS + a Worker route to `gurulens`.
 - Authed curl: login via `POST /api/auth/login` saving cookies (`-c cookiejar`), then `-b cookiejar`. `sameOrigin()` passes for curl (no Origin mismatch) when the `Origin: http://localhost:3000` header is sent.
 - **Agents cannot view images** — for any visual/brand/animation result, ask the human to confirm in the browser.
 
@@ -77,12 +79,14 @@ Production currently has exactly these two accounts and **zero teacher profiles*
 - **Media pointers**: `User.avatarKey`, `TeacherProfile.coverKey`, `Channel.avatarKey`, `Channel.coverKey`, `Organization.logoKey`, `Organization.coverKey` and `Class.coverKey` store **Media ids**; always render via `/api/media/<id>`. Channel images must use the dedicated `channel_avatar` / `channel_cover` upload kinds, campus images `org_logo` / `org_cover` (kind `avatar` still auto-wires the user's personal avatar). Legacy channel voice rows may still contain a storage key, which the channel page resolves through `Media.storageKey`.
 - **Campus quotas**: `Organization.settings` JSON holds `teacherQuota`, `channelQuota`, `classQuota`; defaults live in `orgQuotaDefaults()` (institute 10/25/50, school 30/50/100). Org channel/class creation is blocked at the limit, and adding teacher/staff seats respects `teacherQuota`. Only owners/admins (`canAdminister`) can change quotas, branches or team roles; managers (`canManage`) can edit branding and operate classes/channels.
 - **Date/purity lint rules**: never call `Date.now()`/`new Date()` directly in component render (react-hooks/purity). Use the helpers `maxDobForMinimumAge()` / `isExpired()` in `src/lib/format.ts` or derived state. Never synchronously setState in an effect body (set-state-in-effect) — derive during render or set inside timers/IO callbacks.
+- **Organization signup** (`/register/school`, `/register/institute`) is public and separate from `/api/organizations` (which requires a signed-in teacher/admin). It creates the owner account + starter teacher profile, org, owner membership, main branch and branded LMS workspace in one transaction, then activates a free plan. Only LKR 0 plans matching the audience (`campus` for schools, `institute` for institutes) are accepted; paid plans must stay behind contact-sales.
+- **Contact details** are canonical in `src/lib/contact.ts` (`info@gurulens.us`, `0742366672`, WhatsApp `0764001179`, IneshDev (Pvt) Ltd). Never hardcode a different support address; import the constants/components instead.
 - Status enums: users `active | suspended | pending`; posts/reels `approved | pending | rejected | hidden`; reports `open | resolved | dismissed`.
 
 ## 7. Design system & UI conventions
 
 - **Aesthetic**: glassy Apple-like, aurora background, soft blue/violet brand, generous whitespace, subtle motion. Inspired by ap.lk (layout) and nas.com (landing editorial touches).
-- **Tokens** (`globals.css` `@theme`): brand 50–900 (`#0094fd` family), ink 50–900 (text), accent only **100/300/500/600/700** (no accent-400 — don't use it), success 100/500/600, warn 100/500/600 (`warn-500 #e8a012`), danger. Radii incl. `rounded-card`; shadows `shadow-lift`, `--shadow-glass`.
+- **Tokens** (`globals.css` `@theme`): brand 50–900 (`#0094fd` family), ink 50–900 (text), accent 50/100/300/500/600/700 (no accent-400 — don't use it), success 100/500/600, warn 100/500/600 (`warn-500 #e8a012`), danger. Radii incl. `rounded-card`; shadows `shadow-lift`, `--shadow-glass`.
 - **Fonts**: default `font-sans` = Plus Jakarta Sans (Latin) with Noto Sans Sinhala fallback. **Sinhala styling convention**: wrap Sinhala text with `lang="si"` + `font-si` (Tailwind utility from `--font-si`, Sinhala-first stack) and make it feel intentional: `font-semibold`/`font-bold`, `leading-[1.85]`–`[1.9]`, darker ink (social: brand/accent/ink). Apply to any new Sinhala copy.
 - **Glass classes**: `glass`, `glass-strong` (cards/forms), `glass-subtle`. Aurora page bg via `aurora` class. Decorative floating blobs: `animate-float-slow` / `animate-float-slower` on blurred circles (`bg-brand-400/15 blur-3xl` etc.) inside `aria-hidden` `-z-10` layers.
 - **Cinematic orbs**: `.orb` + `.orb-brand` / `.orb-accent` (radial gradient blur circles, 60px blur) — use inside `aria-hidden` overflow-hidden containers.
@@ -93,6 +97,7 @@ Production currently has exactly these two accounts and **zero teacher profiles*
 - **Components (key APIs)**:
   - `Icon { name, size, className, strokeWidth }` — unknown names fall back to `help`. There is NO `megaphone`. `star` is pre-filled (`fill="currentColor"`); `star-outline` is the outline. Known set: search, home, compass, star, star-outline, check, x, user, users, play, pause, video, film, bell, sliders, menu, heart, bookmark, share, flag, eye, upload, plus, pencil, trash, logout, shield, shield-check, chart, book, clock, sparkles, filter, external, image, camera, info, alert, location, mail, phone, message, help, globe, lock, key, refresh, more, link, crown, zap, fire, send, volume, mute, copy, download, grid, list, award, target, chevron-down/up/left/right, arrow-right, arrow-left, rotate-ccw, panel-left, school, clipboard, inbox, file-text, calendar, radio, settings, smartphone, wifi/wifi-off, credit-card, check-circle, user-plus, loader. Full set lives in `src/components/ui/icons.tsx`; unknown names fall back to `help`.
   - `Avatar { name, src, size ("sm"…), className, ring }` — pass `src={key ? `/api/media/${key}` : null}`.
+  - `Logo { className, wordmark?, dark?, href? }` — real GuruLens lockup (`/brand/gurulens-icon.png` or white variant). `href` defaults to `/`; use it to point at the main site from tenant subdomains. Always prefer this over hand-rolled logo markup.
   - `ShareButton { path, title?, text?, label?, iconOnly? }` — canonical-link sharing; native sheet on coarse pointers, portal menu otherwise. Reused on teacher/channel/class/campus pages and cards.
   - `ChannelCard` (`components/channels`) and `CampusClassCard` (`components/campus`) — shared directory cards with cover, avatar, distinct name row, share and manager actions.
   - `Button`/`LinkButton` variants `primary | secondary | outline | ghost | danger | accent | success`, sizes `xs | sm | md | lg`.
@@ -101,7 +106,9 @@ Production currently has exactly these two accounts and **zero teacher profiles*
   - `CountUp { value, className?, duration? }` — client component; SSR renders final value, animates 0→value on first view (no sync setState in effect).
   - `StarRating { value, onChange?, size?, readOnly? }` (renders buttons), `Field`, `Input`, `Textarea`, `Select`, `Checkbox`, `Modal`, `ConfirmDialog`, `Switch`, `Chip`, `InfoNote`, `Skeleton`, `Spinner`, `Toast`.
 - **Landing page** (`src/app/(site)/page.tsx`): floating blobs layer, hero (badge → headline w/ shimmer span → Sinhala subtitle → SearchBar → avatar stack + stats strip → subject chips), stats grid (CountUp), "Two ways in" cards (student brand-gradient + teacher dark-ink w/ `teacherCta`), trust note, top teachers, popular subjects, **"Latest from Teachers"** editorial section (`latest-from-teachers.tsx`: featured post + compact rail + fill/empty state), "Loved by students" review wall (real 5-star published reviews, masonry columns), how-it-works w/ ghost numbers, teacher CTA, FAQ (`<details>` accordions). Consts: `POPULAR_SUBJECTS`, `HOW_IT_WORKS`, `FAQS`, `teacherCta` (isEducator → `/studio` else `/register/teacher`).
-- **Auth pages**: split-screen shell (`(auth)/layout.tsx`) — sticky brand panel left (badge, shimmer headline, Sinhala sub, CountUp stats, 3 Sinhala bullets, live top-review quote card), form column right (34rem); login/student/teacher cards share the gradient top-bar + icon-chip header pattern; register chooser = two gradient cards mirroring landing. Forms use 2-col field grids (`sm:grid-cols-2`) for password+DOB, class-format+experience, etc.
+- **Auth pages**: split-screen shell (`(auth)/layout.tsx`) — sticky brand panel left (badge, shimmer headline, Sinhala sub, CountUp stats, 3 Sinhala bullets, live top-review quote card), form column right (34rem); login/student/teacher cards share the gradient top-bar + icon-chip header pattern; register chooser = two gradient cards mirroring landing plus a "Register your organization" block for schools/institutes. Forms use 2-col field grids (`sm:grid-cols-2`) for password+DOB, class-format+experience, etc.
+- **Organization signup forms** (`components/auth/OrganizationForm.tsx`): six sections (plan → owner → organization → branded hub → consent), live campus-URL and LMS-subdomain availability checks, Sinhala subcopy, free-launch plan cards, and contact fallback. Schools filter `planAudience(type) === "campus"`; institutes filter `"institute"`.
+- **LMS**: tenant pages use a dark brand-gradient hero with a glass featured/enrollment panel, `LmsCourseCard` with cover gradient + hover accent, dashboard SVG progress ring, and `ContactCtaCard` on public hub pages. Keep `getLmsBasePath()` for internal links and `ContactChannels`/`ContactInline` for help copy.
 
 ## 8. Backlog / ideas (not built yet)
 
@@ -113,6 +120,53 @@ Production currently has exactly these two accounts and **zero teacher profiles*
 - Full-page visual review on the user's ultra-wide monitor (agent can't see images).
 
 ## 9. Changelog (newest first)
+
+### 2026-11-28 — Organization signup, contact & investment page, premium LMS pass
+
+**Register chooser & organization registration:**
+- Replaced the circled 👋 emoji on `/register` with the themed `user-plus` `Icon` chip, matching the auth card design.
+- Added a "Register your organization" section with School and Tuition institute tiles (English + Sinhala), then new `/register/school` and `/register/institute` pages powered by a shared `OrganizationForm`.
+- New `POST /api/auth/register-organization`: validates owner/org/plan, creates the owner (`teacher` role + starter `TeacherProfile`), organization, owner membership, main branch, branded `LmsWorkspace`, and activates a free launch plan in one flow. Paid plans are rejected until payments exist; failure after account creation is prevented by a single transaction. Rate limited to 5/hour/IP.
+- Added public `GET /api/organizations/slug?slug=…` for live campus-URL availability.
+- Pricing CTAs now send campus plans to `/register/school?plan=…` and institute plans to `/register/institute?plan=…`; teacher plans continue to `/register/teacher`.
+
+**Contact, pricing offers & investment:**
+- New `/contact` page plus reusable `ContactChannels`, `ContactInline` and `ContactCtaCard` components. Canonical details live in `src/lib/contact.ts`: `info@gurulens.us`, `0742366672`, WhatsApp `0764001179` (IneshDev (Pvt) Ltd).
+- Contact/investment blocks added to `/pricing`, `/lms`, tenant LMS home, the site footer, and the `/support` contact section (replaced the old `support@gurulens.lk`).
+- Pricing keeps the 100% free launch message and future-payment notice; all 12 plans remain LKR 0.
+
+**Premium LMS pass:**
+- Tenant home: split hero with live stats, featured/continue-learning course card, hub promises, brand-accent announcements, contact CTA.
+- Learner dashboard: gradient welcome hero with SVG progress ring, next-lesson card and quick actions.
+- Course cards: richer cover treatment, gradient hover bar, clearer badges, progress/completion states.
+- Course detail: two-column hero with glass enrollment panel, duration/lesson stats, per-module completion counts.
+- Lesson player: "Lesson X of Y" badge, course-progress ring panel and cleaner completion flow; course catalogue gained a branded hero.
+- `/lms` landing: added contact section and nav item alongside the existing feature/how-it-works/audience sections.
+
+**Subdomains & production:**
+- Set the production Worker secret `COOKIE_DOMAIN=.gurulens.us` so sessions persist across apex ↔ tenant hosts.
+- Verified wildcard DNS (`*.gurulens.us`), Worker route and host rewrite end-to-end: created a temporary institute via the API, confirmed `/campus/<slug>`, `/lms/<slug>`, `/lms/<slug>/courses`, manager access, and `<slug>.gurulens.us` (Host header) all render; then removed the QA org/user.
+- Reseeded all 12 plans (`npx tsx --env-file=.env prisma/seed-plans.ts`).
+
+**Verification:** typecheck 0, lint 0/0, 60/60 tests, `next build` pass (new `/contact`, `/register/school`, `/register/institute`, `/api/auth/register-organization` routes present), `cf:build` pass.
+
+### 2026-11-26 — New pages brought onto the GuruLens design system
+
+**LMS shell now uses the real brand kit:**
+- `/lms` landing page: replaced the hand-made "sparkles" mark with the real `Logo` component + an "LMS" pill; header now uses the site `glass` bar; page background uses `aurora`; added a `SiteFooter` (logo, company links, IneshDev credit) so the page matches the main site.
+- Tenant LMS layout (`{tenant}.gurulens.us`): page background switched to `aurora`, header uses `glass`, added a subtle "GuruLens" brand chip linking back to the main site, and footer now renders the real `Logo` ("powered by GuruLens") instead of a plain text link. Unclaimed-hub fallback also uses the real Logo + aurora.
+- `Logo` gained an optional `href` prop (default `/`) so tenant subdomains can point the wordmark at `https://gurulens.us` without hardcoding elsewhere.
+- Added Sinhala subcopy to the LMS hero per the bilingual design convention.
+
+**Theme token fix:**
+- Added the missing `--color-accent-50` token (`#f6f4ff`). Several pages (`share-button`, classes, explore, classhub, landing) already referenced `bg-accent-50` / `to-accent-50`, which previously resolved to nothing; they now render the intended tint.
+
+**Admin & LMS polish:**
+- `/admin/deletions`: replaced the raw count strip with `Stat` cards (pending/approved/rejected/total); request cards now use the shared `card` style, `Badge` statuses and `Field`/`Textarea` inputs.
+- LMS manage page: share bar and plan-usage panel now use `glass` / `card`; "hub is live" callout uses `glass`.
+- Fixed mojibake (`â€"`, `Â·`, `â€¦`) in LMS copy (claim card, course form, outline editor, announcement/learner panels).
+
+**Verification:** typecheck 0, lint 0/0, 60/60 tests, build pass; dev render check of `/lms` and an unclaimed `/lms/<tenant>` shows the real logo, glass header and site footer.
 
 ### 2026-11-25 — Branded LMS subdomains, deletion approvals, link previews & admin access
 

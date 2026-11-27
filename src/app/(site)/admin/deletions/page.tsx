@@ -1,4 +1,4 @@
-import { SectionHeader } from "@/components/ui/primitives";
+import { SectionHeader, Stat } from "@/components/ui/primitives";
 import { db } from "@/lib/db";
 import { timeAgo } from "@/lib/format";
 import { DeletionRequestsPanel } from "@/components/admin/DeletionRequestsPanel";
@@ -16,6 +16,8 @@ export default async function AdminDeletionsPage() {
   });
 
   const pending = requests.filter((r) => r.status === "pending").length;
+  const approved = requests.filter((r) => r.status === "approved").length;
+  const rejected = requests.filter((r) => r.status === "rejected").length;
 
   return (
     <div className="space-y-6">
@@ -23,9 +25,16 @@ export default async function AdminDeletionsPage() {
         title="Deletion requests"
         subtitle="Channels with many followers and campuses can only be removed after a moderator approves. Review each request carefully — approval is permanent."
       />
-      <div className="rounded-2xl border border-ink-100 bg-white/70 p-4 text-[13px] text-ink-600">
-        <span className="font-bold text-ink-900">{pending}</span> pending review ·{" "}
-        <span className="font-bold text-ink-900">{requests.length}</span> total tracked.
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat
+          label="Pending review"
+          value={pending}
+          icon="clock"
+          tone={pending > 0 ? "warn" : "default"}
+        />
+        <Stat label="Approved" value={approved} icon="check" />
+        <Stat label="Rejected" value={rejected} icon="x" />
+        <Stat label="Total tracked" value={requests.length} icon="inbox" />
       </div>
       <DeletionRequestsPanel
         initial={requests.map((r) => ({

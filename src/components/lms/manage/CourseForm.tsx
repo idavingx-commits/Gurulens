@@ -18,13 +18,13 @@ const LEVELS = [
 ];
 
 const VISIBILITIES = [
-  { value: "public", label: "Open â€” anyone can enroll" },
-  { value: "members", label: "Members only â€” needs approval" },
+  { value: "public", label: "Open — anyone can enroll" },
+  { value: "members", label: "Members only — needs approval" },
 ];
 
 const STATUSES = [
-  { value: "published", label: "Published â€” visible now" },
-  { value: "draft", label: "Draft â€” only managers see it" },
+  { value: "published", label: "Published — visible now" },
+  { value: "draft", label: "Draft — only managers see it" },
 ];
 
 export function CourseForm({
@@ -97,7 +97,7 @@ export function CourseForm({
           id="course-title"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
-          placeholder="O/L Mathematics â€” Full Revision"
+          placeholder="O/L Mathematics — Full Revision"
           maxLength={140}
           required
         />

@@ -6,14 +6,16 @@ export function Logo({
   className,
   wordmark = true,
   dark = false,
+  href = "/",
 }: {
   className?: string;
   wordmark?: boolean;
   dark?: boolean;
+  href?: string;
 }) {
   return (
     <Link
-      href="/"
+      href={href}
       className={cn("flex items-center gap-2.5 transition-opacity hover:opacity-90", className)}
       aria-label="GuruLens home"
     >

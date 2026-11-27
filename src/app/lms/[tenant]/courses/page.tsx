@@ -3,14 +3,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { LmsCourseCard } from "@/components/lms/LmsCourseCard";
+import { ContactInline } from "@/components/marketing/contact-panel";
 import { Icon } from "@/components/ui/icons";
-import { EmptyState, InfoNote, SectionHeader } from "@/components/ui/primitives";
+import { EmptyState, InfoNote } from "@/components/ui/primitives";
 import { getAuth } from "@/lib/auth";
 import {
   getLmsAccess,
   getLmsBasePath,
   getLmsCourseCards,
   getLmsWorkspaceBySubdomain,
+  lmsBrandColor,
 } from "@/lib/lms";
 
 type Props = { params: Promise<{ tenant: string }> };
@@ -30,6 +32,7 @@ export default async function LmsCoursesPage({ params }: Props) {
   const auth = await getAuth();
   const access = await getLmsAccess(workspace, auth?.user ?? null);
   const base = await getLmsBasePath(workspace.subdomain);
+  const brand = lmsBrandColor(workspace.brandColor);
 
   const cards = await getLmsCourseCards(workspace.id, auth?.user.id ?? null, {
     includeDrafts: access.canManage,
@@ -59,11 +62,52 @@ export default async function LmsCoursesPage({ params }: Props) {
         ) : null}
       </div>
 
-      <div>
-        <SectionHeader
-          title={`All courses${published.length ? ` · ${published.length}` : ""}`}
-          subtitle={`Courses published by ${workspace.name}.`}
+      <section className="relative overflow-hidden rounded-[1.75rem] bg-ink-900 p-5 text-white shadow-xl sm:p-7">
+        <div
+          aria-hidden="true"
+          className="absolute inset-0"
+          style={{ background: `linear-gradient(120deg, #07152e 15%, ${brand} 150%)` }}
         />
+        <div
+          aria-hidden="true"
+          className="absolute -top-16 -right-10 size-52 rounded-full bg-white/10 blur-3xl"
+        />
+        <div className="relative flex flex-wrap items-end justify-between gap-4">
+          <div className="min-w-0">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[9.5px] font-black tracking-[0.14em] uppercase backdrop-blur-sm">
+              <Icon name="book-open" size={11} /> Course catalogue
+            </span>
+            <h1 className="mt-2.5 text-[26px] leading-tight font-black tracking-tight sm:text-[32px]">
+              All courses
+            </h1>
+            <p className="mt-1.5 max-w-xl text-[12.5px] leading-relaxed text-white/65">
+              Courses published by {workspace.name}. Enroll to save progress, unlock members-only
+              lessons and track your learning.
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-[10.5px] font-bold text-white/60">
+              <span className="inline-flex items-center gap-1.5">
+                <Icon name="grid" size={12} /> {published.length} published
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <Icon name="play" size={12} />{" "}
+                {published.reduce((sum, course) => sum + course.lessonCount, 0)} lessons
+              </span>
+              {enrolled.length > 0 ? (
+                <span className="inline-flex items-center gap-1.5 text-brand-200">
+                  <Icon name="check-circle" size={12} /> {enrolled.length} enrolled
+                </span>
+              ) : null}
+            </div>
+          </div>
+          <ContactInline
+            tone="dark"
+            className="justify-start text-left sm:max-w-xs"
+            text="Questions about a course?"
+          />
+        </div>
+      </section>
+
+      <div>
 
         {!auth ? (
           <InfoNote icon="info" className="mb-4">

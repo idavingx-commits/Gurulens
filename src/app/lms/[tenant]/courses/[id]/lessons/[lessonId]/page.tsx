@@ -145,6 +145,10 @@ export default async function LmsLessonPage({ params }: Props) {
     0,
   );
   const progress = totalLessons === 0 ? 0 : Math.round((doneLessons / totalLessons) * 100);
+  const lessonNumber =
+    allModules
+      .flatMap((module) => module.lessons)
+      .findIndex((item) => item.id === lesson.id) + 1;
 
   const embed = lesson.videoUrl ? videoEmbed(lesson.videoUrl) : null;
   const done = lesson.progress.length > 0;
@@ -194,6 +198,9 @@ export default async function LmsLessonPage({ params }: Props) {
         </nav>
 
         <div className="flex flex-wrap items-center gap-2">
+          <Badge tone="brand">
+            Lesson {lessonNumber} of {totalLessons}
+          </Badge>
           <Badge tone="neutral">{lesson.module.title}</Badge>
           {lesson.durationMin ? (
             <Badge tone="neutral" icon="clock">
@@ -201,7 +208,11 @@ export default async function LmsLessonPage({ params }: Props) {
             </Badge>
           ) : null}
           {lesson.isPreview ? <Badge tone="brand">Preview lesson</Badge> : null}
-          {done ? <Badge tone="success" icon="check">Completed</Badge> : null}
+          {done ? (
+            <Badge tone="success" icon="check">
+              Completed
+            </Badge>
+          ) : null}
         </div>
 
         <h1 className="text-[24px] leading-tight font-black tracking-tight text-ink-900 sm:text-[30px]">
@@ -210,6 +221,51 @@ export default async function LmsLessonPage({ params }: Props) {
         {lesson.description ? (
           <p className="text-[13.5px] leading-relaxed text-ink-500">{lesson.description}</p>
         ) : null}
+
+        <div className="card flex items-center gap-3 p-3.5">
+          <div className="relative size-11 flex-none">
+            <svg viewBox="0 0 44 44" className="size-full -rotate-90">
+              <circle
+                cx="22"
+                cy="22"
+                r="17"
+                fill="none"
+                stroke="rgb(226 232 240)"
+                strokeWidth="5"
+              />
+              <circle
+                cx="22"
+                cy="22"
+                r="17"
+                fill="none"
+                stroke={progress >= 100 ? "rgb(22 163 74)" : brand}
+                strokeWidth="5"
+                strokeLinecap="round"
+                strokeDasharray={`${2 * Math.PI * 17} ${2 * Math.PI * 17}`}
+                strokeDashoffset={2 * Math.PI * 17 * (1 - progress / 100)}
+              />
+            </svg>
+            <span className="absolute inset-0 flex items-center justify-center text-[9.5px] font-black text-ink-700">
+              {progress}%
+            </span>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[9.5px] font-black tracking-[0.12em] text-ink-400 uppercase">
+              Course progress
+            </p>
+            <p className="text-[12px] font-extrabold text-ink-900">
+              {doneLessons} of {totalLessons} lessons completed
+            </p>
+          </div>
+          {auth ? (
+            <Link
+              href={`${base}/dashboard`}
+              className="hidden flex-none items-center gap-1 text-[11px] font-bold text-brand-600 hover:text-brand-700 sm:inline-flex"
+            >
+              My learning <Icon name="arrow-right" size={11} />
+            </Link>
+          ) : null}
+        </div>
 
         {embed ? (
           <div className="overflow-hidden rounded-2xl border border-ink-100 bg-ink-900 shadow-lg">
