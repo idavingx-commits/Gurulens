@@ -139,7 +139,9 @@ Production currently has exactly these two accounts and **zero teacher profiles*
 - `ContactCtaCard` actions now stack below the copy instead of sitting in a `flex-none` row that squeezed the heading to one word per line (the contact page investment card had ~120px of text width). Added a grid/watermark treatment, investment company chip and larger balanced heading.
 - Measured at a 1200px viewport: investment card 518px wide, heading 518px wide and one line tall.
 
-**Verification:** typecheck/lint clean; browser screenshots checked at tablet width; desktop LMS hero checked via a 1200px iframe; contact card width measured at 1200px. No console errors.
+**Verification:** typecheck/lint clean, 60/60 tests pass, `next build` + `cf:build` succeed. Browser screenshots checked at tablet width; desktop LMS hero checked via a 1200px iframe; contact card width measured at 1200px. No console errors.
+
+**Deployed:** commit `96e07c2`, Worker version `aed28694-f851-4fa5-8974-6172901bf0f5` on `feat/cloudflare-neon`. Live checks on `https://gurulens.us`: `/`, `/lms`, `/contact`, `/register`, `/register/school`, `/register/institute`, `/pricing`, `/support` all 200; tenants `myhub`, `ineshdev`, `rajakeeya` 200; served HTML contains the new LMS hero/roadmap copy, the no-domain-purchase explainer on `/lms`, `/register` and `/register/school`, and the investment card CTA.
 
 ### 2026-11-28 — Organization signup, contact & investment page, premium LMS pass
 
