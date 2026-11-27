@@ -47,7 +47,8 @@ Key dirs: `src/app/(site)` public pages, `src/app/(auth)` login/register, `src/a
   5. `npm run cf:build` (OpenNext Worker bundle, exit 0)
   6. Render check with curl, e.g.:
      `$st=(& curl.exe -s -o "$tmp\page.html" -w "%{http_code}" "http://localhost:3000/path") -join ""`
-- Tenant subdomain check in dev: `curl.exe -H "Host: <tenant>.gurulens.us" http://localhost:3000/` — the proxy rewrites to `/lms/<tenant>`. In production, `*.gurulens.us` has wildcard DNS + a Worker route to `gurulens`.
+- **Deploy**: `npm run cf:deploy` only uploads the existing `.open-next` bundle — after any code change run `npm run cf:build` first (or chain both), otherwise production keeps serving the previous build.
+- Tenant subdomain check in dev: `curl.exe -H "Host: <tenant>.gurulens.us" http://localhost:3000/` — the proxy rewrites to `/lms/<tenant>`. In production, `*.gurulens.us` has wildcard DNS + a Worker route to `gurulens`. Main-site paths (listed in `MAIN_SITE_PREFIXES`, e.g. `/contact`, `/register`, `/pricing`) are never rewritten.
 - Authed curl: login via `POST /api/auth/login` saving cookies (`-c cookiejar`), then `-b cookiejar`. `sameOrigin()` passes for curl (no Origin mismatch) when the `Origin: http://localhost:3000` header is sent.
 - **Agents cannot view images** — for any visual/brand/animation result, ask the human to confirm in the browser.
 
@@ -145,6 +146,7 @@ Production currently has exactly these two accounts and **zero teacher profiles*
 
 **Subdomains & production:**
 - Set the production Worker secret `COOKIE_DOMAIN=.gurulens.us` so sessions persist across apex ↔ tenant hosts.
+- Added `/contact` to `MAIN_SITE_PREFIXES` in `src/proxy.ts` so the public contact page stays on the main site when visited from a tenant subdomain; rebuilt the Worker so the route ships (a bare `cf:deploy` reuses the existing `.open-next` bundle).
 - Verified wildcard DNS (`*.gurulens.us`), Worker route and host rewrite end-to-end: created a temporary institute via the API, confirmed `/campus/<slug>`, `/lms/<slug>`, `/lms/<slug>/courses`, manager access, and `<slug>.gurulens.us` (Host header) all render; then removed the QA org/user.
 - Reseeded all 12 plans (`npx tsx --env-file=.env prisma/seed-plans.ts`).
 
